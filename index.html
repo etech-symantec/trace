@@ -5,11 +5,47 @@
 <title>Trace 분석 도구</title>
 <style>
   body { font-family:"Segoe UI", Arial, sans-serif; background:#f5f7fa; margin:20px; color:#333; }
+  /* ✅ 헤더 디자인 — ProxySG 스타일 */
   h1 {
-    background:#1e3a5f; color:white; padding:12px 18px;
-    border-radius:8px; display:flex; justify-content:space-between; align-items:flex-end;
+  	font-size: 1.5em;
+    background: #1e3a5f;
+    color: white;
+    padding: 12px 18px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 5pt;
   }
-  .subtitle { font-size:0.8em; color:#bcd0f7; }
+
+  .title-left {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .subtitle {
+    font-size: 0.7em;
+    font-weight: normal;
+    color: #bcd0f7;
+    opacity: 0.9;
+  }
+  .date-container {
+    text-align: right;
+    line-height: 1.2;
+  }
+
+  .version {
+    font-size: 14px;
+    color: #bcd0f7;
+    opacity: 0.9;
+  }
+
+  .date-header {
+    font-size: 16px;
+    color: #fff;
+    margin: 0;
+  }
+
   .container {
     background:#fff; border-radius:14px; box-shadow:0 6px 18px rgba(0,0,0,0.08);
     margin:30px; padding:28px 32px;
@@ -66,7 +102,10 @@
 
 <h1>
   <div>Trace 분석 도구<br><span class="subtitle">by 이테크시스템</span></div>
-  <div>ver.2025.11.23</div>
+  <div class="date-container">
+    <div class="version">ver.2025.10.30.01</div><p>
+    <div></div>
+  </div>
 </h1>
 
 <div class="container">
