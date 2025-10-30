@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Trace 분석 도구</title>
+<style>
+  body { font-family:"Segoe UI", Arial, sans-serif; background:#f5f7fa; margin:20px; color:#333; }
+  h1 {
+    background:#1e3a5f; color:white; padding:12px 18px;
+    border-radius:8px; display:flex; justify-content:space-between; align-items:flex-end;
+  }
+  .subtitle { font-size:0.8em; color:#bcd0f7; }
+  .container {
+    background:#fff; border-radius:14px; box-shadow:0 6px 18px rgba(0,0,0,0.08);
+    margin:30px; padding:28px 32px;
+  }
+  textarea {
+    width:100%; min-height:180px; border:1px solid #d1d5db; border-radius:8px;
+    padding:10px; resize:vertical; background:#fafafa; font-family:Consolas,monospace;
+  }
+  textarea:focus { outline:none; border-color:#2563eb; background:#fff; box-shadow:0 0 0 2px rgba(37,99,235,0.2); }
+  button {
+    background:#2563eb; color:white; border:none; border-radius:8px;
+    padding:9px 16px; cursor:pointer; font-weight:600; margin-top:10px;
+  }
+  button:hover { background:#1e40af; }
+
+  pre {
+    background:#0f172a; color:#e2e8f0; padding:12px; border-radius:10px;
+    white-space:pre-line;
+    overflow-x:auto;
+    line-height:1.1;
+    margin:0;
+    min-height:100px;
+  }
+
+  .match-line { color:#22c55e; }
+  .na-line { color:#7f1d1d; }
+  .blue-line { color:#3b82f6; }
+  .pink-line { color:#ec4899; }
+  .url-line { color:#facc15; }
+  .purple-line { color:#a855f7; } /* verdict 줄 - 보라색 */
+
+  .session-list {
+    margin-top:15px; border:1px solid #d1d5db; border-radius:8px;
+    max-height:400px; overflow-y:auto; background:#f9fafb;
+  }
+  .session-item {
+    padding:8px 12px; border-bottom:1px solid #e5e7eb; cursor:pointer;
+    font-family:Consolas, monospace;
+  }
+  .session-item:hover { background:#e0f2fe; }
+  .session-id { font-weight:bold; color:#111827; display:block; }
+  .session-method { color:#2563eb; font-weight:600; }
+  .session-url { color:#7c3aed; }
+  .active-session { background:#dbeafe; }
+
+  .filter-box {
+    margin-top: 15px; padding: 8px; background: #f3f4f6;
+    border-radius: 8px; display: flex; gap: 18px; align-items: center;
+  }
+  .warning { color:#b91c1c; font-size:13px; margin-left:auto; }
+</style>
+</head>
+<body>
+
+<h1>
+  <div>Trace 분석 도구<br><span class="subtitle">by 이테크시스템</span></div>
+  <div>ver.2025.11.23</div>
+</h1>
+
+<div class="container">
+  <h2>📄 분석 입력</h2>
+  <textarea id="inputText" placeholder="여기에 trace 로그를 붙여넣으세요..."></textarea>
+  <input type="file" id="fileInput" accept=".txt" style="margin-top:8px;">
+  <br>
+  <button id="analyzeBtn">🔍 분석 실행</button>
+  <button id="downloadBtn">💾 결과 HTML로 저장</button>
+
+  <div id="sessionSelectorContainer" style="display:none;">
+    <label><b>세션 선택:</b></label>
+    <div class="session-list" id="sessionList"></div>
+  </div>
+
+  <div class="filter-box" id="filterBox" style="display:none;">
+    <label><input type="checkbox" id="showMiss"> miss 보기 (<span id="missCount">0</span>)</label>
+    <label><input type="checkbox" id="showNA"> n/a 보기 (<span id="naCount">0</span>)</label>
+    <span class="warning" id="perfWarning" style="display:none;">⚠️ 1000개 이상 항목은 렌더링이 느려질 수 있습니다</span>
+  </div>
+
+  <h2 style="margin-top:25px;">🧩 분석 결과</h2>
+  <pre id="result">(분석 결과가 여기에 표시됩니다)</pre>
+</div>
+
+<script>
+document.getElementById("fileInput").addEventListener("change", e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => document.getElementById("inputText").value = ev.target.result;
+  reader.readAsText(file);
+});
+
+function htmlEscape(str) {
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+let sessions = [];
+
+document.getElementById("analyzeBtn").addEventListener("click", () => {
+  const text = document.getElementById("inputText").value;
+  if (!text.trim()) {
+    alert("텍스트를 입력하거나 파일을 업로드하세요.");
+    return;
+  }
+
+  const pattern = /start transaction[\s\S]*?stop transaction/gi;
+  const matches = text.match(pattern);
+  if (!matches) {
+    document.getElementById("result").textContent = "분석할 트랜잭션 구간이 없습니다.";
+    return;
+  }
+
+  sessions = [];
+  let totalMiss = 0;
+  let totalNA = 0;
+
+  matches.forEach(block => {
+    const lines = block.split(/\r?\n+/).map(l => l.trim()).filter(Boolean);
+    let sessionHeader = "Unknown";
+    if (lines.length > 1 && /^transaction/i.test(lines[1])) {
+      sessionHeader = lines[1].replace(/^start\s+/i, "").trim();
+    }
+
+    let urlLine = "정보 없음";
+    const timeIdx = lines.findIndex(line => /^time\s*:/i.test(line));
+    if (timeIdx !== -1 && lines[timeIdx + 1]) {
+      const nextLine = lines[timeIdx + 1].trim();
+      if (/^(CONNECT|GET|POST|PUT|DELETE|HEAD|OPTIONS|unknown|ssl|tcp|tls)\s+/i.test(nextLine)) {
+        urlLine = nextLine;
+      }
+    }
+
+    let methodPart = "", urlPart = "";
+    const urlParts = urlLine.split(/\s+/);
+    if (urlParts.length >= 2) {
+      methodPart = urlParts[0];
+      urlPart = urlParts.slice(1).join(" ");
+    }
+
+    const allLines = [];
+    let sectionLineNum = 0;
+    let currentSection = null;
+
+    for (let i = 0; i < lines.length; i++) {
+      let line = lines[i];
+      if (/^start transaction/i.test(line) || /^stop transaction/i.test(line)) continue;
+
+      const sectionMatch = line.match(/^<([A-Za-z0-9_\-\s"'\@\:]+)>/);
+      if (sectionMatch) {
+        currentSection = sectionMatch[1];
+        sectionLineNum = 0;
+        allLines.push({ type: "normal", content: htmlEscape(line) });
+        continue;
+      }
+
+      if (currentSection) sectionLineNum++;
+
+      // Assigned values ~ connection 삭제
+      if (/^Assigned values of transaction variables:/i.test(line)) {
+        while (i < lines.length && !/^connection:/i.test(lines[i])) i++;
+        continue;
+      }
+
+      // condition ~ connection 삭제
+      if (/^Matched condition definitions\:/i.test(line)) {
+        while (i < lines.length && !/^connection:/i.test(lines[i])) i++;
+	i--; // connection 줄은 남기기
+        continue;
+      }
+
+      // connection: 회색 구분선 + 본문 출력
+      if (/^connection:/i.test(line)) {
+        allLines.push({
+          type: "normal",
+          content: `<span style="color:#6b7280;">===============================================================================</span>`
+        });
+        allLines.push({ type: "normal", content: htmlEscape(line) });
+        continue;
+      }
+
+      if (/^miss:/i.test(line)) {
+        totalMiss++;
+        allLines.push({ type: "miss", content: `<span class="blue-line">${htmlEscape(line)}</span>` });
+        continue;
+      }
+
+      if (/^n\/a/i.test(line)) {
+        totalNA++;
+        allLines.push({ type: "na", content: `<span class="na-line">${htmlEscape(line)}</span>` });
+        continue;
+      }
+
+      // MATCH: < 로 시작하면 MATCH: 제거
+      if (/^MATCH:\s*</i.test(line)) {
+        line = line.replace(/^MATCH:\s*/i, "");
+      }
+
+      // MATCH 카운트
+      if (/^MATCH:/i.test(line)) line = `(${sectionLineNum}) ${line}`;
+
+      line = htmlEscape(line);
+      if (/^\(\d+\)\s*MATCH:/i.test(line)) line = `<span class="match-line">${line}</span>`;
+      else if (/^(client-in:|server-out:)/i.test(line)) line = `<span class="blue-line">${line}</span>`;
+      else if (/^(server-in:|client-out:)/i.test(line)) line = `<span class="pink-line">${line}</span>`;
+      else if (/^(CONNECT|GET|POST|PUT|DELETE|HEAD|OPTIONS|unknown|ssl|tcp|tls)\s+/i.test(line))
+        line = `<span class="url-line">${line}</span>`;
+      else if (/^verdict:/i.test(line))
+        line = `<span class="purple-line">${line}</span>`;
+
+      allLines.push({ type: "normal", content: line });
+    }
+
+    sessions.push({ id: sessionHeader, methodPart, urlPart, lines: allLines });
+  });
+
+  // miss/n/a 카운트 반영
+  document.getElementById("missCount").textContent = totalMiss;
+  document.getElementById("naCount").textContent = totalNA;
+
+  const perfWarn = document.getElementById("perfWarning");
+  if (totalMiss + totalNA > 1000) perfWarn.style.display = "inline";
+  else perfWarn.style.display = "none";
+
+  const listContainer = document.getElementById("sessionList");
+  listContainer.innerHTML = "";
+  document.getElementById("sessionSelectorContainer").style.display = "block";
+  document.getElementById("filterBox").style.display = "flex";
+
+  sessions.forEach((s, idx) => {
+    const div = document.createElement("div");
+    div.className = "session-item";
+    div.innerHTML = `
+      <span class="session-id">${s.id}</span>
+      <span class="session-method">${s.methodPart}</span>
+      <span class="session-url">${s.urlPart}</span>
+    `;
+    div.addEventListener("click", () => {
+      document.querySelectorAll(".session-item").forEach(el => el.classList.remove("active-session"));
+      div.classList.add("active-session");
+      renderSession(idx);
+    });
+    listContainer.appendChild(div);
+  });
+
+  document.querySelectorAll(".session-item")[0].classList.add("active-session");
+  renderSession(0);
+});
+
+function renderSession(index) {
+  const s = sessions[index];
+  const showMiss = document.getElementById("showMiss").checked;
+  const showNA = document.getElementById("showNA").checked;
+
+  const visibleLines = s.lines
+    .filter(l => {
+      if (l.type === "miss" && !showMiss) return false;
+      if (l.type === "na" && !showNA) return false;
+      return true;
+    })
+    .map(l => l.content)
+    .join("\n")
+    .replace(/\n{2,}/g, "\n")
+    .trim();
+
+  document.getElementById("result").innerHTML = visibleLines;
+}
+
+document.getElementById("showMiss").addEventListener("change", () => {
+  const idx = [...document.querySelectorAll(".session-item")].findIndex(el => el.classList.contains("active-session"));
+  renderSession(idx);
+});
+document.getElementById("showNA").addEventListener("change", () => {
+  const idx = [...document.querySelectorAll(".session-item")].findIndex(el => el.classList.contains("active-session"));
+  renderSession(idx);
+});
+
+document.getElementById("downloadBtn").addEventListener("click", () => {
+  const html = document.documentElement.outerHTML;
+  const blob = new Blob([html], { type: "text/html" });
+  const a = document.createElement("a");
+  const date = new Date().toISOString().slice(0,10).replace(/-/g,"");
+  a.href = URL.createObjectURL(blob);
+  a.download = `Trace_Report_${date}.html`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+</script>
+
+</body>
+</html>
