@@ -5,6 +5,34 @@
 <title>ProxySG Trace 분석 도구</title>
 <style>
   body { font-family:"Segoe UI", Arial, sans-serif; background:#f5f7fa; margin:20px; color:#333; }
+  
+  /* 🔹 상단 네비게이션 버튼 */
+  .top-nav {
+    display: flex;
+    justify-content: flex-end;
+    gap: 5px;
+    margin-bottom: 5px;
+  }
+
+  .nav-btn {
+    background: #1e3a5f;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 4px 10px;       /* 좌우 여백 살짝 확보 */
+    height: 18px;            /* 버튼 높이 고정 */
+    line-height: 18px;       /* 텍스트를 세로 중앙으로 정렬 */
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.75rem;         /* 폰트 크기 절반 수준 */
+    text-decoration: none;
+    transition: background 0.2s;
+  }
+
+  .nav-btn:hover {
+    background: #294b7a;
+  }
+
 
   h1 {
   	font-size: 1.5em;
@@ -106,6 +134,11 @@
 </style>
 </head>
 <body>
+
+<div class="top-nav">
+  <a href="https://etech-symantec.github.io/sysinfo" class="nav-btn">🧩 Sysinfo 분석</a>
+  <a href="https://etech-symantec.github.io/trace" class="nav-btn">📄 Trace 분석</a>
+</div>
 
 <h1>
   <div>Trace 분석 도구<br><span class="subtitle">by 이테크시스템</span></div>
