@@ -76,7 +76,7 @@
 
   .container {
     background:#fff; border-radius:14px; box-shadow:0 6px 18px rgba(0,0,0,0.08);
-    margin:30px; padding:28px 32px;
+    margin:30px; padding:4px 32px;
   }
   textarea {
     width:100%; min-height:180px; border:1px solid #d1d5db; border-radius:8px;
@@ -124,6 +124,7 @@
     border-radius: 8px; display: flex; gap: 18px; align-items: center;
   }
   .warning { color:#b91c1c; font-size:13px; margin-left:auto; }
+  
   body {
     font-family: "Segoe UI", Arial, sans-serif;
     background: #f3f4f6;
@@ -245,18 +246,21 @@ document.getElementById("analyzeBtn").addEventListener("click", () => {
 
       if (currentSection) sectionLineNum++;
 
-      // Assigned values ~ connection 삭제
-      if (/^Assigned values of transaction variables:/i.test(line)) {
-        while (i < lines.length && !/^connection:/i.test(lines[i])) i++;
+      
+      // condition 또는 Assigned values ~ connection 전까지 삭제
+      if (
+        /^Matched condition definitions:/i.test(line) ||
+        /^Assigned values of transaction variables:/i.test(line)
+      ) {
+        while (i + 1 < lines.length && !/^connection:/i.test(lines[i + 1])) {
+          i++; // connection 바로 전 줄까지 이동
+        }
+        i--; // connection 줄을 건너뛰지 않도록 한 칸 되돌림
         continue;
       }
 
-      // condition ~ connection 삭제
-      if (/^Matched condition definitions\:/i.test(line)) {
-        while (i < lines.length && !/^connection:/i.test(lines[i])) i++;
-	i--; // connection 줄은 남기기
-        continue;
-      }
+
+
 
       // connection: 회색 구분선 + 본문 출력
       if (/^connection:/i.test(line)) {
@@ -264,7 +268,7 @@ document.getElementById("analyzeBtn").addEventListener("click", () => {
           type: "normal",
           content: `<span style="color:#6b7280;">===============================================================================</span>`
         });
-        allLines.push({ type: "normal", content: htmlEscape(line) });
+        
         continue;
       }
 
