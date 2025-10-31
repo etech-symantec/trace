@@ -1,11 +1,19 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dongle&display=swap" rel="stylesheet">
 <meta charset="UTF-8">
 <title>ProxySG Trace 분석 도구</title>
 <style>
   body { font-family:"Segoe UI", Arial, sans-serif; background:#f5f7fa; margin:20px; color:#333; }
-  
+  .dongle-regular {
+    font-family: "Dongle", sans-serif;
+    font-weight: 400;
+    font-style: normal;
+  }
+
   /* 🔹 상단 네비게이션 버튼 */
   .top-nav {
     display: flex;
@@ -47,8 +55,9 @@
   }
 
   .title-left {
-    display: flex;
-    flex-direction: column;
+    font-size: 1.6em;                   /* 제목 크게 */
+    line-height: 0.7;                   /* 줄 간격 줄이기 */
+    margin-bottom: 0;                   /* 아래 여백 제거 */
   }
 
   .subtitle {
@@ -56,6 +65,8 @@
     font-weight: normal;
     color: #bcd0f7;
     opacity: 0.9;
+    margin-top: 2px;                    /* 제목과의 여백 최소화 */
+    display: block;                     /* 줄바꿈 확실히 적용 */
   }
   .date-container {
     text-align: right;
@@ -63,7 +74,7 @@
   }
 
   .version {
-    font-size: 14px;
+    font-size: 24px;
     color: #bcd0f7;
     opacity: 0.9;
   }
@@ -132,6 +143,13 @@
     padding: 40px;
   }
 
+
+  textarea.dragover {
+    border: 2px dashed #2563eb !important;
+    background: #eef2ff !important;
+  }
+
+
 </style>
 </head>
 <body>
@@ -141,17 +159,17 @@
   <a href="https://etech-symantec.github.io/trace" class="nav-btn">📄 Trace 분석</a>
 </div>
 
-<h1>
+<h1 class="dongle-regular">
   <div class="title-left">ProxySG Trace 분석 도구<br><span class="subtitle">by 이테크시스템</span></div>
   <div class="date-container">
-    <div class="version">ver.2025.10.30.01</div><p>
+    <div class="version">ver.2025.10.31.01</div><p>
     <div></div>
   </div>
 </h1>
 
 <div class="container">
   <h2>📄 Trace 입력</h2>
-  <textarea id="inputText" placeholder="여기에 trace 로그를 붙여넣으세요..."></textarea>
+  <textarea id="inputText" placeholder="여기에 trace 로그를 붙여넣거나 파일을 끌어 놓으세요."></textarea>
   <input type="file" id="fileInput" accept=".txt" style="margin-top:8px;">
   <br>
   <button id="analyzeBtn">🔍 분석 실행</button>
@@ -173,11 +191,16 @@
 </div>
 
 <script>
+// === 파일 선택 버튼 업로드 ===
 document.getElementById("fileInput").addEventListener("change", e => {
   const file = e.target.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = ev => document.getElementById("inputText").value = ev.target.result;
+  reader.onload = ev => {
+    document.getElementById("inputText").value = ev.target.result;
+    // ✅ 파일 로드 후 자동 분석 실행
+    document.getElementById("analyzeBtn").click();
+  };
   reader.readAsText(file);
 });
 
@@ -247,30 +270,57 @@ document.getElementById("analyzeBtn").addEventListener("click", () => {
       if (currentSection) sectionLineNum++;
 
       
-      // condition 또는 Assigned values ~ connection 전까지 삭제
+      // condition 또는 Assigned values ~ connection 전까지 삭제 (connection 줄은 보존)
       if (
         /^Matched condition definitions:/i.test(line) ||
         /^Assigned values of transaction variables:/i.test(line)
       ) {
-        while (i + 1 < lines.length && !/^connection:/i.test(lines[i + 1])) {
-          i++; // connection 바로 전 줄까지 이동
+        while (i + 1 < lines.length) {
+          // 다음 줄이 connection:이면 삭제 중단하고 남김
+          if (/^connection:/i.test(lines[i + 1])) {
+            break;
+          }
+          i++;
         }
-        i--; // connection 줄을 건너뛰지 않도록 한 칸 되돌림
         continue;
       }
 
 
-
-
-      // connection: 회색 구분선 + 본문 출력
+      // connection: 구분선 + 본문 출력
       if (/^connection:/i.test(line)) {
         allLines.push({
           type: "normal",
-          content: `<span style="color:#6b7280;">===============================================================================</span>`
+          content: `<span style="color:#E9D484;"><br>===[ Connection Info ]===================================================================================================</span>`
         });
-        
+        allLines.push({ type: "normal", content: `<span style="color:#E9D484;">${htmlEscape(line)}</span>`
+        });
         continue;
       }
+      
+      // verdict: 구분선 + 본문 출력
+      if (/^verdict:/i.test(line)) {
+        allLines.push({
+          type: "normal",
+          content: `<span style="color:#B7A3E3;"><br>===[ Verdict ]==========================================================================================================</span>`
+        });
+        allLines.push({ type: "normal", content: `<span style="color:#B7A3E3;">${htmlEscape(line)}</span>`
+        });
+        continue;
+      }
+      
+      // Transaction timing 구분선 + 본문 출력
+      if (/^Transaction timing:/i.test(line)) {
+        allLines.push({
+          type: "normal",
+          content: `<span style="color:#FFD5D5;"><br>===[ Transaction Timing ]===============================================================================================</span>`
+        });
+        allLines.push({ type: "normal", content: `<span style="color:#FFD5D5;">${htmlEscape(line)}</span>`
+        });
+        continue;
+      }
+
+
+
 
       if (/^miss:/i.test(line)) {
         totalMiss++;
@@ -298,8 +348,6 @@ document.getElementById("analyzeBtn").addEventListener("click", () => {
       else if (/^(server-in:|client-out:)/i.test(line)) line = `<span class="pink-line">${line}</span>`;
       else if (/^(CONNECT|GET|POST|PUT|DELETE|HEAD|OPTIONS|unknown|ssl|tcp|tls)\s+/i.test(line))
         line = `<span class="url-line">${line}</span>`;
-      else if (/^verdict:/i.test(line))
-        line = `<span class="purple-line">${line}</span>`;
 
       allLines.push({ type: "normal", content: line });
     }
@@ -378,6 +426,40 @@ document.getElementById("downloadBtn").addEventListener("click", () => {
   a.click();
   URL.revokeObjectURL(a.href);
 });
+
+
+// === 드래그 앤 드롭 파일 업로드 기능 ===
+const inputArea = document.getElementById("inputText");
+
+inputArea.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  inputArea.style.borderColor = "#2563eb";
+  inputArea.style.background = "#eef2ff";
+});
+
+inputArea.addEventListener("dragleave", () => {
+  inputArea.style.borderColor = "#d1d5db";
+  inputArea.style.background = "#fafafa";
+});
+
+inputArea.addEventListener("drop", (e) => {
+  e.preventDefault();
+  inputArea.style.borderColor = "#d1d5db";
+  inputArea.style.background = "#fafafa";
+
+  const file = e.dataTransfer.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    inputArea.value = ev.target.result;
+    // ✅ 파일 드롭 후 자동 분석 실행
+    document.getElementById("analyzeBtn").click();
+  };
+  reader.readAsText(file);
+});
+
+
 </script>
 
 </body>
