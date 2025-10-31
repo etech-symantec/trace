@@ -68,6 +68,7 @@
     margin-top: 2px;                    /* 제목과의 여백 최소화 */
     display: block;                     /* 줄바꿈 확실히 적용 */
   }
+  
   .date-container {
     text-align: right;
     line-height: 1.2;
@@ -90,7 +91,7 @@
     margin:30px; padding:4px 32px;
   }
   textarea {
-    width:100%; min-height:120px; border:1px solid #d1d5db; border-radius:8px;
+    width:97%; min-height:120px; border:1px solid #d1d5db; border-radius:8px;
     padding:10px; resize:vertical; background:#fafafa; font-family:Consolas,monospace;
   }
   textarea:focus { outline:none; border-color:#2563eb; background:#fff; box-shadow:0 0 0 2px rgba(37,99,235,0.2); }
@@ -109,7 +110,7 @@
     min-height:100px;
   }
 
-  .match-line { color:#22c55e; }
+  .match-line { color:#67C090; }
   .na-line { color:#7f1d1d; }
   .blue-line { color:#3b82f6; }
   .pink-line { color:#ec4899; }
@@ -259,13 +260,61 @@ document.getElementById("analyzeBtn").addEventListener("click", () => {
       let line = lines[i];
       if (/^start transaction/i.test(line) || /^stop transaction/i.test(line)) continue;
 
-      const sectionMatch = line.match(/^<([A-Za-z0-9_\-\s"'\@\:]+)>/);
+      // === <...> 섹션 구분선 표시 ===
+      const sectionMatch = line.match(/^<([A-Za-z0-9_\-\s"'\@\:\"\[\]\:]+)>/);
       if (sectionMatch) {
-        currentSection = sectionMatch[1];
+        const sectionName = sectionMatch[1];
+
+        // ① 내부 참조 정책 (@ 포함)
+        if (/@/.test(sectionName)) {
+          const prevLine = lines[i - 1] || "";
+
+          // ▶ 처음 등장하는 @ 섹션이면 구분선 추가
+          if (!lines.slice(0, i).some(l => /^<[^>]*@/.test(l))) {
+            allLines.push({
+              type: "normal",
+              content: `<span style="color:#a1a1a1;"><br>───[ 내부 참조 정책 ]────────────────────────────────────────────────</span>`
+            });
+          }
+
+          // 본문 출력
+          allLines.push({
+            type: "normal", content: htmlEscape(line) });
+          continue;
+        }
+
+        // ② Local 정책 ([local:] 포함)
+        if (/\[local:/i.test(line)) {
+          const alreadyLocal = allLines.some(l => l.content?.includes("───[ Local 정책 ]"));
+          if (!alreadyLocal) {
+            allLines.push({
+              type: "normal",
+              content: `<span style="color:#F49BAB;"><br>───[ Local 정책 ]──────────────────────────────────────────────────</span>`
+            });
+          }
+          allLines.push({
+            type: "normal", content: htmlEscape(line)});
+          continue;
+        }
+
+        // ③ VPM 정책 (@ 없음, [local:] 없음)
+        const prevHasAt = lines.slice(0, i).some(l => /^<[^>]*@/.test(l));
+        const alreadyVPM = allLines.some(l => l.content?.includes("───[ VPM 정책 ]"));
+        if (prevHasAt && !alreadyVPM) {
+          allLines.push({
+            type: "normal",
+            content: `<span style="color:#77BEF0;"><br>───[ VPM 정책 ]──────────────────────────────────────────────────</span>`
+          });
+        }
+
+        // 본문 출력
+        currentSection = sectionName;
         sectionLineNum = 0;
-        allLines.push({ type: "normal", content: htmlEscape(line) });
+        allLines.push({
+          type: "normal", content: htmlEscape(line) });
         continue;
       }
+
 
       if (currentSection) sectionLineNum++;
 
@@ -335,15 +384,37 @@ document.getElementById("analyzeBtn").addEventListener("click", () => {
       }
 
       // MATCH: < 로 시작하면 MATCH: 제거
-      if (/^MATCH:\s*</i.test(line)) {
+      if (/^\s*MATCH:\s*</i.test(line)) {
         line = line.replace(/^MATCH:\s*/i, "");
       }
 
-      // MATCH 카운트
-      if (/^MATCH:/i.test(line)) line = `(${sectionLineNum}) ${line}`;
+      // === [1️⃣ MATCH: < 로 시작하면 먼저 제거] ===
+      if (/^\s*MATCH:\s*</i.test(line)) {
+        line = line.replace(/^MATCH:\s*/i, "");
+      }
+
+      // === [2️⃣ 섹션 기준점 감지] ===
+      // '<' 또는 'MATCH: <'로 시작했던 모든 줄을 섹션 기준으로 처리
+      const sectionStartPattern = /^<|^\s*MATCH:\s*</i;
+      if (sectionStartPattern.test(lines[i])) {
+        currentSection = "section_" + i;  // 고유한 섹션 식별용 이름
+        sectionLineNum = 0;
+      }
+
+      // === [3️⃣ MATCH 카운트 계산: 바로 위 섹션부터의 상대 위치]
+      if (/^MATCH:/i.test(line)) {
+        let relativeIndex = 1;
+        for (let j = i - 1; j >= 0; j--) {
+          // '<' 혹은 'MATCH: <' 만나는 순간 중단
+          if (/^<|^\s*MATCH:\s*</i.test(lines[j])) break;
+          relativeIndex++;
+        }
+        line = `　(#${relativeIndex}) ${line}`;
+      }
+
 
       line = htmlEscape(line);
-      if (/^\(\d+\)\s*MATCH:/i.test(line)) line = `<span class="match-line">${line}</span>`;
+      if (/^\　\(\#\d+\)\s*MATCH:/i.test(line)) line = `<span class="match-line">${line}</span>`;
       else if (/^(client-in:|server-out:)/i.test(line)) line = `<span class="blue-line">${line}</span>`;
       else if (/^(server-in:|client-out:)/i.test(line)) line = `<span class="pink-line">${line}</span>`;
       else if (/^(CONNECT|GET|POST|PUT|DELETE|HEAD|OPTIONS|unknown|ssl|tcp|tls)\s+/i.test(line))
