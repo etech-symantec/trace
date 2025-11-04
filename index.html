@@ -8,6 +8,7 @@
 <title>ProxySG Trace 분석 도구</title>
 <style>
   body { font-family:"Segoe UI", Arial, sans-serif; background:#f5f7fa; margin:20px; color:#333; }
+  
   .dongle-regular {
     font-family: "Dongle", sans-serif;
     font-weight: 400;
@@ -40,7 +41,6 @@
   .nav-btn:hover {
     background: #294b7a;
   }
-
 
   h1 {
   	font-size: 1.5em;
@@ -90,15 +90,19 @@
     background:#fff; border-radius:14px; box-shadow:0 6px 18px rgba(0,0,0,0.08);
     margin:30px; padding:4px 32px;
   }
+  
   textarea {
-    width:97%; min-height:120px; border:1px solid #d1d5db; border-radius:8px;
+    width:95%; min-height:180px; border:1px solid #d1d5db; border-radius:8px;
     padding:10px; resize:vertical; background:#fafafa; font-family:Consolas,monospace;
   }
+  
   textarea:focus { outline:none; border-color:#2563eb; background:#fff; box-shadow:0 0 0 2px rgba(37,99,235,0.2); }
+  
   button {
     background:#2563eb; color:white; border:none; border-radius:8px;
     padding:9px 16px; cursor:pointer; font-weight:600; margin-top:10px;
   }
+  
   button:hover { background:#1e40af; }
 
   pre {
@@ -111,11 +115,13 @@
   }
 
   .match-line { color:#67C090; }
+  .miss-line { color:#9BB4C0; }
   .na-line { color:#7f1d1d; }
   .blue-line { color:#3b82f6; }
   .pink-line { color:#ec4899; }
   .url-line { color:#facc15; }
-  .purple-line { color:#a855f7; } /* verdict 줄 - 보라색 */
+  .purple-line { color:#a855f7; }
+  .late-line { color:#E1D0B3; }
 
   .session-list {
     margin-top:15px; border:1px solid #d1d5db; border-radius:8px;
@@ -135,6 +141,7 @@
     margin-top: 15px; padding: 8px; background: #f3f4f6;
     border-radius: 8px; display: flex; gap: 18px; align-items: center;
   }
+  
   .warning { color:#b91c1c; font-size:13px; margin-left:auto; }
   
   body {
@@ -144,10 +151,30 @@
     padding: 40px;
   }
 
-
   textarea.dragover {
     border: 2px dashed #2563eb !important;
     background: #eef2ff !important;
+  }
+  
+  #tzOffset {
+    font-family: "Segoe UI", sans-serif;
+    font-size: 0.7rem;
+    background: #fff;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 2px 8px;
+    cursor: pointer;
+  }
+  
+  #tzOffset:hover {
+    border-color: #2563eb;
+  }
+  
+  #sessionSearchInput:focus {
+    border-color: #2563eb;
+    background: #fff;
+    box-shadow: 0 0 0 2px rgba(37,99,235,0.15);
+    outline: none;
   }
 
 
@@ -163,32 +190,134 @@
 <h1 class="dongle-regular">
   <div class="title-left">ProxySG Trace 분석 도구<br><span class="subtitle">by 이테크시스템</span></div>
   <div class="date-container">
-    <div class="version">ver.2025.10.31.01</div><p>
+    <div class="version">ver.2025.11.4.01</div><p>
     <div></div>
   </div>
 </h1>
 
+
 <div class="container">
   <h2>📄 Trace 입력</h2>
-  <textarea id="inputText" placeholder="여기에 trace 로그를 붙여넣거나 파일을 끌어 놓으세요."></textarea>
-  <input type="file" id="fileInput" accept=".txt" style="margin-top:8px;">
-  <br>
-  <button id="analyzeBtn">🔍 분석 실행</button>
-  <button id="downloadBtn">💾 결과 HTML로 저장</button>
 
-  <div id="sessionSelectorContainer" style="display:none;">
-    <label><b>세션 선택:</b></label>
-    <div class="session-list" id="sessionList"></div>
+  <div style="display:flex; gap:20px; align-items:flex-start;">
+
+    <!-- 🔹 왼쪽: Trace 입력창 -->
+    <div style="flex:1;">
+      <textarea id="inputText" placeholder="여기에 trace 로그를 붙여넣거나 파일을 끌어 놓으세요."></textarea>
+    </div>
+
+    <!-- 🔹 오른쪽: 카드형 분석 도구 -->
+    <div style="
+      width: 25%;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    ">
+      <h3 style="
+        font-size: 1.1rem;
+        margin: 0;
+        margin-bottom: 8px;
+        color: #1e3a5f;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      ">
+        📦 분석 도구
+      </h3>
+
+      <input type="file" id="fileInput" accept=".txt" style="
+        padding: 6px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        background:#f9fafb;
+        cursor:pointer;
+      ">
+
+      <button id="analyzeBtn" style="
+        background:#2563eb;
+        color:white;
+        border:none;
+        border-radius:8px;
+        padding:9px 16px;
+        cursor:pointer;
+        font-weight:600;
+        transition: background 0.2s;
+      ">🔍 분석 실행</button>
+
+      <button id="downloadBtn" style="
+        background:#10b981;
+        color:white;
+        border:none;
+        border-radius:8px;
+        padding:9px 16px;
+        cursor:pointer;
+        font-weight:600;
+        transition: background 0.2s;
+      ">💾 결과 HTML로 저장</button>
+    </div>
+
   </div>
+
+
+
+  <div id="sessionSelectorContainer" style="display:none; margin-top:10px; margin-bottom:8px;">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+      <label style="white-space:nowrap; font-weight:400;"><b>세션 선택:</b></label>
+
+      <!-- 🔎 검색 입력창 -->
+      <input 
+        type="text" 
+        id="sessionSearchInput" 
+        placeholder="키워드로 검색 (예: GET, URL, ID 등)" 
+        style="
+          flex:1;
+          padding: 6px 10px;
+          border: 1px solid #d1d5db;
+          border-radius: 6px;
+          font-family: 'Segoe UI', sans-serif;
+          font-size: 0.9rem;
+          box-sizing: border-box;
+        ">
+    </div>
+
+    <!-- 🔹 세션 목록 -->
+    <div class="session-list" id="sessionList" style="margin-top:8px;"></div>
+  </div>
+
 
   <div class="filter-box" id="filterBox" style="display:none;">
-    <label><input type="checkbox" id="showMiss"> miss 보기 (<span id="missCount">0</span>)</label>
-    <label><input type="checkbox" id="showNA"> n/a 보기 (<span id="naCount">0</span>)</label>
-    <span class="warning" id="perfWarning" style="display:none;">⚠️ 1000개 이상 항목은 렌더링이 느려질 수 있습니다</span>
+    <div style="display:flex; align-items:center; gap:15px; flex:1;">
+      <label><input type="checkbox" id="showMiss"> miss 보기 (<span id="missCount">0</span>)</label>
+      <label><input type="checkbox" id="showNA"> n/a 보기 (<span id="naCount">0</span>)</label>
+      <label><input type="checkbox" id="showLate"> late 보기 (<span id="lateCount">0</span>)</label>
+    </div>
+    
+    <div style="margin-left:auto; display:flex; align-items:center; gap:6px;">
+      <label for="tzOffset">타임존:</label>
+      <select id="tzOffset" style="border:1px solid #ccc; border-radius:6px; padding:2px 6px;">
+        <script>
+          for (let i = 12; i >= -12; i--) {
+            const opt = document.createElement("option");
+            opt.value = i;
+            opt.textContent = i === 9 ? "UTC+9 (KST)" : `UTC${i >= 0 ? "+" + i : i}`;
+            if (i === 9) opt.selected = true;
+            document.currentScript.parentElement.appendChild(opt);
+          }
+        </script>
+      </select>
+    </div>
   </div>
 
-  <h2 style="margin-top:25px;">🧩 분석 결과</h2>
+
+
+  <h2 style="margin-top:25px;">📝 분석 결과</h2>
   <pre id="result">(분석 결과가 여기에 표시됩니다)</pre>
+
 </div>
 
 <script>
@@ -199,7 +328,7 @@ document.getElementById("fileInput").addEventListener("change", e => {
   const reader = new FileReader();
   reader.onload = ev => {
     document.getElementById("inputText").value = ev.target.result;
-    // ✅ 파일 로드 후 자동 분석 실행
+    // 파일 로드 후 자동 분석 실행
     document.getElementById("analyzeBtn").click();
   };
   reader.readAsText(file);
@@ -226,8 +355,6 @@ document.getElementById("analyzeBtn").addEventListener("click", () => {
   }
 
   sessions = [];
-  let totalMiss = 0;
-  let totalNA = 0;
 
   matches.forEach(block => {
     const lines = block.split(/\r?\n+/).map(l => l.trim()).filter(Boolean);
@@ -259,6 +386,22 @@ document.getElementById("analyzeBtn").addEventListener("click", () => {
     for (let i = 0; i < lines.length; i++) {
       let line = lines[i];
       if (/^start transaction/i.test(line) || /^stop transaction/i.test(line)) continue;
+      
+      
+      // === [🕒 time: UTC → 선택된 오프셋 기준 변환 + yyyy-mm-dd + 타임존 약자 + 색상 표시] ===
+      if (/^time\s*:/i.test(line)) {
+        const match = line.match(/time\s*:\s*([\d-]+\s+[\d:]+)\s*(UTC)?/i);
+        if (match) {
+          const utcStr = match[1];
+          allLines.push({
+            type: "time",
+            content: utcStr,
+            raw: line    // 원본 "time: ..." 줄 전체 저장
+          });
+          continue;
+        }
+      }
+
 
       // === <...> 섹션 구분선 표시 ===
       const sectionMatch = line.match(/^<([A-Za-z0-9_\-\s"'\@\:\"\[\]\:]+)>/);
@@ -368,24 +511,19 @@ document.getElementById("analyzeBtn").addEventListener("click", () => {
         continue;
       }
 
-
-
-
       if (/^miss:/i.test(line)) {
-        totalMiss++;
-        allLines.push({ type: "miss", content: `<span class="blue-line">${htmlEscape(line)}</span>` });
+        allLines.push({ type: "miss", content: `<span class="miss-line">${htmlEscape(line)}</span>` });
         continue;
       }
 
       if (/^n\/a/i.test(line)) {
-        totalNA++;
         allLines.push({ type: "na", content: `<span class="na-line">${htmlEscape(line)}</span>` });
         continue;
       }
-
-      // MATCH: < 로 시작하면 MATCH: 제거
-      if (/^\s*MATCH:\s*</i.test(line)) {
-        line = line.replace(/^MATCH:\s*/i, "");
+      
+      if (/^late:/i.test(line)) {
+        allLines.push({ type: "late", content: `<span class="late-line">${htmlEscape(line)}</span>` });
+        continue;
       }
 
       // === [1️⃣ MATCH: < 로 시작하면 먼저 제거] ===
@@ -426,13 +564,7 @@ document.getElementById("analyzeBtn").addEventListener("click", () => {
     sessions.push({ id: sessionHeader, methodPart, urlPart, lines: allLines });
   });
 
-  // miss/n/a 카운트 반영
-  document.getElementById("missCount").textContent = totalMiss;
-  document.getElementById("naCount").textContent = totalNA;
-
-  const perfWarn = document.getElementById("perfWarning");
-  if (totalMiss + totalNA > 1000) perfWarn.style.display = "inline";
-  else perfWarn.style.display = "none";
+  
 
   const listContainer = document.getElementById("sessionList");
   listContainer.innerHTML = "";
@@ -456,27 +588,135 @@ document.getElementById("analyzeBtn").addEventListener("click", () => {
   });
 
   document.querySelectorAll(".session-item")[0].classList.add("active-session");
+
+  // 검색 입력 시 필터링
+  document.getElementById("sessionSearchInput").addEventListener("input", (e) => {
+    const keyword = e.target.value.trim().toLowerCase();
+    const items = document.querySelectorAll(".session-item");
+
+    items.forEach((item, idx) => {
+      const s = sessions[idx];
+      const text = `${s.id} ${s.methodPart} ${s.urlPart}`.toLowerCase();
+      item.style.display = text.includes(keyword) ? "block" : "none";
+    });
+  });
+
   renderSession(0);
 });
+
+
+
+// === UTC → 선택된 타임존 기준 로컬 시간 변환 ===
+function convertUTCToLocal(utcStr) {
+  // 선택된 오프셋 (기본 9)
+  const offset = parseInt(document.getElementById("tzOffset")?.value || "9", 10);
+
+  // UTC 기준 Date 객체
+  const utcDate = new Date(utcStr + " UTC");
+  if (isNaN(utcDate)) return utcStr;
+
+  // 오프셋 기준으로 직접 시간 보정 (UTC getter로 보정)
+  const localTime = utcDate.getTime() + offset * 60 * 60 * 1000;
+  const localDate = new Date(localTime);
+
+  const pad = n => String(n).padStart(2, "0");
+  const y = localDate.getUTCFullYear();
+  const m = pad(localDate.getUTCMonth() + 1);
+  const d = pad(localDate.getUTCDate());
+  const hh = pad(localDate.getUTCHours());
+  const mm = pad(localDate.getUTCMinutes());
+  const ss = pad(localDate.getUTCSeconds());
+
+  const tzLabel = offset === 9 ? "KST" : `UTC${offset >= 0 ? "+" + offset : offset}`;
+  return `${y}-${m}-${d} ${hh}:${mm}:${ss} ${tzLabel}`;
+}
+
+
+
 
 function renderSession(index) {
   const s = sessions[index];
   const showMiss = document.getElementById("showMiss").checked;
   const showNA = document.getElementById("showNA").checked;
+  const showLate = document.getElementById("showLate").checked;
 
-  const visibleLines = s.lines
-    .filter(l => {
+  // 현재 세션의 miss/n/a/late 개수 계산
+  const missCount = s.lines.filter(l => l.type === "miss").length;
+  const naCount = s.lines.filter(l => l.type === "na").length;
+  const lateCount = s.lines.filter(l => l.type === "late").length;
+
+  // 필터박스에 표시값 갱신
+  document.getElementById("missCount").textContent = missCount;
+  document.getElementById("naCount").textContent = naCount;
+  document.getElementById("lateCount").textContent = lateCount;
+  
+  
+  // time 줄은 렌더링 시점에서 변환
+  const renderedLines = s.lines.map(l => {
+    if (l.type === "time") {
+      const converted = convertUTCToLocal(l.content);
+      return `${htmlEscape(l.raw)} <span style="color:#ec4899;">(${converted})</span>`;
+    }
+    return l.content;
+  });
+
+  const visibleLines = renderedLines
+    .filter((_, idx) => {
+      const l = s.lines[idx];
       if (l.type === "miss" && !showMiss) return false;
       if (l.type === "na" && !showNA) return false;
+      if (l.type === "late" && !showLate) return false;
       return true;
     })
-    .map(l => l.content)
     .join("\n")
     .replace(/\n{2,}/g, "\n")
     .trim();
 
+
   document.getElementById("result").innerHTML = visibleLines;
+  
+  // 🔹 참고 문서 버튼 추가 (결과가 있을 때만)
+  const resultBox = document.getElementById("result");
+  let refBtn = document.getElementById("refBtn");
+  if (!refBtn) {
+    refBtn = document.createElement("button");
+    refBtn.id = "refBtn";
+    refBtn.textContent = "📘 Timing 상세설명 보기";
+    refBtn.style.cssText = `
+      position: absolute;
+      right: 50px;
+      bottom: 35px;
+      background: #44444E;
+      color: #F7CAC9;
+      border: none;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      opacity: 0.8;
+      z-index: 10;
+    `;
+    
+    // 부모 .container를 상대위치로 만들어줌
+    const container = document.querySelector(".container");
+    container.style.position = "relative";
+    container.appendChild(refBtn);
+
+    // 버튼 클릭 시 모달 표시
+    refBtn.addEventListener("click", () => {
+      const modal = document.getElementById("refModal");
+      const frame = document.getElementById("refFrame");
+      frame.src = "https://knowledge.broadcom.com/external/article/168320";
+      modal.style.display = "flex";
+    });
+    // 결과창 내부가 pre라 absolute 불가 → 상위 컨테이너에 append
+    document.querySelector(".container").appendChild(refBtn);
+  }
+
+
+  
 }
+
 
 document.getElementById("showMiss").addEventListener("change", () => {
   const idx = [...document.querySelectorAll(".session-item")].findIndex(el => el.classList.contains("active-session"));
@@ -486,6 +726,12 @@ document.getElementById("showNA").addEventListener("change", () => {
   const idx = [...document.querySelectorAll(".session-item")].findIndex(el => el.classList.contains("active-session"));
   renderSession(idx);
 });
+document.getElementById("showLate").addEventListener("change", () => {
+  const idx = [...document.querySelectorAll(".session-item")]
+    .findIndex(el => el.classList.contains("active-session"));
+  renderSession(idx);
+});
+
 
 document.getElementById("downloadBtn").addEventListener("click", () => {
   const html = document.documentElement.outerHTML;
@@ -513,6 +759,15 @@ inputArea.addEventListener("dragleave", () => {
   inputArea.style.background = "#fafafa";
 });
 
+// === 타임존 변경 시 즉시 반영 ===
+document.getElementById("tzOffset").addEventListener("change", () => {
+  // 현재 선택된 세션 인덱스 찾기
+  const idx = [...document.querySelectorAll(".session-item")]
+    .findIndex(el => el.classList.contains("active-session"));
+  if (idx >= 0) renderSession(idx);
+});
+
+
 inputArea.addEventListener("drop", (e) => {
   e.preventDefault();
   inputArea.style.borderColor = "#d1d5db";
@@ -531,7 +786,65 @@ inputArea.addEventListener("drop", (e) => {
 });
 
 
+// === 참고 문서 모달 제어 ===
+document.addEventListener("click", (e) => {
+  const modal = document.getElementById("refModal");
+  const frame = document.getElementById("refFrame");
+  if (!modal) return;
+
+  // 닫기 버튼 클릭
+  if (e.target.id === "closeRef") {
+    modal.style.display = "none";
+    frame.src = "";
+  }
+
+  // 배경 클릭 시 닫기
+  if (e.target.id === "refModal") {
+    modal.style.display = "none";
+    frame.src = "";
+  }
+});
+
+
+
+
+
 </script>
+
+
+<!-- 🔹 참고 문서 모달 -->
+<div id="refModal" style="
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.6);
+  z-index:9999;
+  justify-content:center;
+  align-items:center;
+">
+  <div style="
+    background:#fff;
+    border-radius:10px;
+    box-shadow:0 4px 20px rgba(0,0,0,0.3);
+    width:80%;
+    height:80%;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+    position:relative;
+  ">
+    <div style="background:#1e3a5f; color:#fff; padding:10px 16px; display:flex; justify-content:space-between; align-items:center;">
+      <span style="font-weight:600;">🔗 Broadcom Knowledge Base</span>
+      <button id="closeRef" style="
+        background:none; border:none; color:#fff; font-size:22px; cursor:pointer; line-height:1;
+      ">&times;</button>
+    </div>
+    <iframe id="refFrame" src="" style="flex:1; border:none; width:100%;"></iframe>
+  </div>
+</div>
+
+
+
 
 </body>
 </html>
