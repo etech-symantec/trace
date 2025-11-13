@@ -54,6 +54,14 @@
     margin-bottom: 5pt;
   }
 
+  .header-wrap {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    background: #f5f7fa;  /* 필요시 배경 지정 */
+    transition: all 0.25s ease;
+  }
+
   .title-left {
     font-size: 1.6em;                   /* 제목 크게 */
     line-height: 0.7;                   /* 줄 간격 줄이기 */
@@ -182,21 +190,22 @@
 </head>
 <body>
 
-<div class="top-nav">
-  <a href="https://etech-symantec.github.io/sysinfo" class="nav-btn">🧩 Sysinfo 분석</a>
-  <a href="https://etech-symantec.github.io/isg" class="nav-btn">📄 ISG 분석</a>
-  <a href="https://etech-symantec.github.io/trace" class="nav-btn">📄 Trace 분석</a>
-  <a href="https://etech-symantec.github.io/sizing-sg" class="nav-btn">📊 Sizing-SG 보기</a>
-</div>
-
-<h1 class="dongle-regular">
-  <div class="title-left">ProxySG Trace 분석 도구<br><span class="subtitle">by 이테크시스템</span></div>
-  <div class="date-container">
-    <div class="version">ver.2025.11.4.01</div><p>
-    <div></div>
+<div class="header-wrap">
+  <div class="top-nav">
+    <a href="https://etech-symantec.github.io/sysinfo" class="nav-btn">🧩 Sysinfo 분석</a>
+    <a href="https://etech-symantec.github.io/isg" class="nav-btn">📄 ISG 분석</a>
+    <a href="https://etech-symantec.github.io/trace" class="nav-btn">📄 Trace 분석</a>
+    <a href="https://etech-symantec.github.io/sizing-sg" class="nav-btn">📊 Sizing-SG 보기</a>
   </div>
-</h1>
-
+  
+  <h1 class="dongle-regular">
+    <div class="title-left">ProxySG Trace 분석 도구<br><span class="subtitle">by 이테크시스템</span></div>
+    <div class="date-container">
+      <div class="version">ver.2025.11.4.01</div><p>
+      <div></div>
+    </div>
+  </h1>
+</div>
 
 <div class="container">
   <h2 style="
