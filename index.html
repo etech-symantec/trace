@@ -24,19 +24,17 @@
   }
 
   .nav-btn {
-    background: #1e3a5f;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    padding: 4px 10px;       /* 좌우 여백 살짝 확보 */
-    height: 18px;            /* 버튼 높이 고정 */
-    line-height: 18px;       /* 텍스트를 세로 중앙으로 정렬 */
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 0.75rem;         /* 폰트 크기 절반 수준 */
-    text-decoration: none;
-    transition: background 0.2s;
-  }
+        background: #1e3a5f; color: white; border: none; border-radius: 8px;
+        padding: 4px 8px; height: 26px; line-height: 18px;
+        cursor: pointer; font-weight: 400; font-size: 0.75rem;
+        text-decoration: none; transition: background 0.2s;
+      }
+      .nav-btn-soon {
+        background: #98A1BC; color: #555879; border: none; border-radius: 8px;
+        padding: 4px 8px; height: 26px; line-height: 18px;
+        cursor: pointer; font-weight: 400; font-size: 0.75rem;
+        text-decoration: none; transition: background 0.2s;
+      }
 
   .nav-btn:hover {
     background: linear-gradient(135deg, #FF0066, #0046FF);
@@ -156,7 +154,7 @@
     font-family: "Segoe UI", Arial, sans-serif;
     background: #f3f4f6;
     margin: 0;
-    padding: 20px 40px 40px 40px;
+    padding: 6px 40px 40px 40px;
   }
 
   textarea.dragover {
@@ -197,6 +195,7 @@
     <a href="https://etech-symantec.github.io/trace" class="nav-btn">📄 Trace 분석</a>
     <a href="https://etech-symantec.github.io/sizing-sg" class="nav-btn">📊 Sizing-SG 보기</a>
     <a href="https://etech-symantec.github.io/elk" class="nav-btn">🧬 ELK 로그 설정</a>
+    <a href="https://etech-symantec.github.io/elk" class="nav-btn-soon">🚦 PAC</a>
   </div>
   
   <h1 class="dongle-regular">
