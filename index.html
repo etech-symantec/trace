@@ -92,18 +92,84 @@
     box-shadow: 0 0 0 2px rgba(37,99,235,0.15);
     outline: none;
   }
+
+
+  /* ===== 분석 방식 선택 / 직접 연결 페이지 ===== */
+  .trace-mode-wrap {
+    margin: 24px 30px 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+  .trace-mode-card {
+    border: 1px solid #dbe3ef;
+    background: #fff;
+    border-radius: 14px;
+    padding: 17px 18px;
+    cursor: pointer;
+    text-align: left;
+    box-shadow: 0 5px 16px rgba(15,23,42,.05);
+    transition: .18s ease;
+    color: #344054;
+  }
+  .trace-mode-card:hover { transform: translateY(-1px); border-color:#93b4e7; box-shadow:0 8px 20px rgba(37,99,235,.09); }
+  .trace-mode-card.active { border-color:#2563eb; background:linear-gradient(180deg,#eff6ff,#fff); box-shadow:0 0 0 2px rgba(37,99,235,.10); }
+  .trace-mode-title { display:flex; align-items:center; gap:9px; font-size:1rem; font-weight:800; color:#1e3a5f; margin-bottom:5px; }
+  .trace-mode-desc { font-size:.79rem; color:#667085; line-height:1.55; }
+  .trace-mode-badge { margin-left:auto; font-size:.66rem; font-weight:700; padding:3px 7px; border-radius:999px; background:#eef2f6; color:#475467; }
+  .trace-mode-card.active .trace-mode-badge { background:#dbeafe; color:#1d4ed8; }
+  .mode-panel { display:none; }
+  .mode-panel.active { display:block; }
+
+  .direct-hero {
+    display:grid;
+    grid-template-columns:minmax(0,1.25fr) minmax(310px,.75fr);
+    gap:18px;
+    align-items:stretch;
+    margin:18px 0 10px;
+  }
+  .direct-card {
+    border:1px solid #e4e7ec;
+    border-radius:14px;
+    padding:18px;
+    background:#fff;
+  }
+  .direct-card h3 { margin:0 0 8px; color:#1e3a5f; font-size:1rem; }
+  .direct-card p { margin:0; color:#667085; font-size:.8rem; line-height:1.6; }
+  .direct-flow { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin-top:14px; }
+  .direct-step { border:1px solid #e4e7ec; border-radius:10px; padding:11px; background:#f8fafc; }
+  .direct-step b { display:block; color:#1e3a5f; font-size:.78rem; margin-bottom:4px; }
+  .direct-step span { color:#667085; font-size:.7rem; line-height:1.45; }
+  .direct-note { margin-top:14px; padding:11px 13px; border-left:4px solid #2563eb; background:#eff6ff; border-radius:8px; font-size:.75rem; color:#475467; line-height:1.55; }
+  @media(max-width:900px){
+    .trace-mode-wrap{grid-template-columns:1fr;margin:16px 14px 0}.direct-hero{grid-template-columns:1fr}.direct-flow{grid-template-columns:1fr 1fr}
+  }
+  @media(max-width:600px){.direct-flow{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
 
 <!-- 공통 헤더 + 제목 + 버전 -->
 <script>
-  window.pageTitle = "ProxySG Trace 분석";
-  window.pageVersion = "ver.2025.11.20.01";
+  window.pageTitle = "ProxySG Trace 도구";
+  window.pageVersion = "ver.2026.09.22.02";
 </script> 
 <script src="https://etech-symantec.github.io/header.js"></script>
 
-<div class="container">
+<div class="trace-mode-wrap" id="traceModeWrap">
+  <button type="button" class="trace-mode-card active" data-trace-mode="file">
+    <div class="trace-mode-title">📄 Trace 파일 분석 <span class="trace-mode-badge">브라우저</span></div>
+    <div class="trace-mode-desc">저장된 Trace 파일을 업로드하거나 내용을 붙여넣어 바로 분석합니다. 프로그램 설치 없이 사용할 수 있습니다.</div>
+  </button>
+  <button type="button" class="trace-mode-card" data-trace-mode="direct">
+    <div class="trace-mode-title">🛰️ ProxySG 직접 연결 <span class="trace-mode-badge">Windows Editor</span></div>
+    <div class="trace-mode-desc">로컬 ProxySG에 직접 접속해 Local Policy 조회 → Trace 정책 적용 → LIVE Trace 조회/분석까지 한 번에 수행합니다.</div>
+  </button>
+</div>
+
+
+<div id="fileAnalysisPanel" class="container mode-panel active">
   <h2 style="
     display: flex;
     align-items: baseline;
@@ -197,7 +263,6 @@
         display: block;
       ">⬇️ 스크립트 다운받기</a>
 
-      <div id="proxysg-launcher-slot"></div>
     </div>
   </div>
 
@@ -261,6 +326,32 @@
   	📝 분석 결과</h2>
   <pre id="result">(분석 결과가 여기에 표시됩니다)</pre>
 
+</div>
+
+
+<div id="directAnalysisPanel" class="container mode-panel">
+  <h2 style="margin:14px 0 4px; color:#1e3a5f;">🛰️ ProxySG 직접 연결 분석</h2>
+  <div style="font-size:.8rem;color:#667085;line-height:1.6;">브라우저에서 SSH/HTTPS를 직접 처리하지 않고, PC의 로컬 Trace Editor가 ProxySG에 연결합니다. Launcher가 설치되어 있지 않으면 실행 버튼에서 자동으로 설치 안내로 전환됩니다.</div>
+
+  <div class="direct-hero">
+    <div class="direct-card">
+      <h3>🚀 Trace Editor 실행</h3>
+      <p style="margin-bottom:12px;">설치된 Launcher를 자동 확인합니다. 설치되지 않았다면 안정성/기능 안내 모달을 표시하고 설치 파일 다운로드를 시작합니다.</p>
+      <div id="proxysg-launcher-slot"></div>
+    </div>
+    <div class="direct-card">
+      <h3>🔐 로컬 실행 구조</h3>
+      <p>Launcher 상태 확인은 <b>127.0.0.1</b>에서만 이루어집니다. 장비 접속 정보는 Launcher가 수집하거나 웹 서버로 전달하지 않습니다. Editor 업데이트 파일은 SHA-256을 확인한 뒤 실행합니다.</p>
+      <div class="direct-note">처음 설치할 때 Windows SmartScreen이 표시될 수 있습니다. 현재 Launcher는 상용 코드 서명 인증서로 서명되지 않았기 때문이며, 설치 모달에서 위치·무결성 검증 방식·기능을 확인할 수 있습니다.</div>
+    </div>
+  </div>
+
+  <div class="direct-flow">
+    <div class="direct-step"><b>1. 장비 설정</b><span>SSH 및 Management HTTPS 정보와 여러 장비 프로필을 관리합니다.</span></div>
+    <div class="direct-step"><b>2. Trace 정책</b><span>현재 Local Policy를 조회하고 사용자/목적지/서비스 조건으로 Trace CPL을 생성합니다.</span></div>
+    <div class="direct-step"><b>3. LIVE Trace</b><span>HTTPS로 Trace 파일 목록과 내용을 빠르게 조회하며 LIVE 갱신할 수 있습니다.</span></div>
+    <div class="direct-step"><b>4. 즉시 분석</b><span>최근 세션, Verdict, Method, 응답코드, Transaction Time 필터로 바로 분석합니다.</span></div>
+  </div>
 </div>
 
 <script>
@@ -823,6 +914,31 @@ document.addEventListener("click", (e) => {
   </div>
 </div>
 
+
+
+<script>
+(() => {
+  const buttons = [...document.querySelectorAll('[data-trace-mode]')];
+  const filePanel = document.getElementById('fileAnalysisPanel');
+  const directPanel = document.getElementById('directAnalysisPanel');
+
+  function setTraceMode(mode, updateUrl = true) {
+    const direct = mode === 'direct';
+    filePanel?.classList.toggle('active', !direct);
+    directPanel?.classList.toggle('active', direct);
+    buttons.forEach(btn => btn.classList.toggle('active', btn.dataset.traceMode === (direct ? 'direct' : 'file')));
+    if (updateUrl) {
+      const u = new URL(location.href);
+      if (direct) u.searchParams.set('mode', 'direct'); else u.searchParams.delete('mode');
+      history.replaceState(null, '', u);
+    }
+  }
+
+  buttons.forEach(btn => btn.addEventListener('click', () => setTraceMode(btn.dataset.traceMode)));
+  const initial = new URLSearchParams(location.search).get('mode') === 'direct' ? 'direct' : 'file';
+  setTraceMode(initial, false);
+})();
+</script>
 
 <script src="./launcher-widget.js"></script>
 
