@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Do+Hyeon&display=swap" rel="stylesheet">
 <meta charset="UTF-8">
-<title>ProxySG Trace 분석 도구</title>
+<title data-i18n-title="pageTitle">ProxySG Trace 분석 도구</title>
 <style>
   .container {
     background:#fff; border-radius:14px; box-shadow:0 6px 18px rgba(0,0,0,0.08);
@@ -322,6 +322,105 @@
     color:#153d73;
   }
 
+
+  /* ===== v7: 선택 탭과 본문을 자연스럽게 연결 ===== */
+  .trace-mode-wrap {
+    margin-bottom: 0 !important;
+  }
+  .trace-mode-card {
+    margin-bottom: 10px !important;
+  }
+  .trace-mode-card.active {
+    margin-bottom: -1px !important;
+    border-bottom-color: #fff !important;
+    box-shadow: 0 -1px 0 rgba(255,255,255,.95), 0 5px 14px rgba(36,87,144,.07) !important;
+  }
+  .trace-mode-card.active::after { display:none !important; }
+  .mode-panel.container {
+    position: relative;
+    margin-top: 0 !important;
+    border-top-color:#7ea6d8 !important;
+    background:#fff;
+    overflow: visible;
+  }
+  .mode-panel.active::before {
+    content:"";
+    position:absolute;
+    top:-2px;
+    height:3px;
+    background:#fff;
+    z-index:8;
+    pointer-events:none;
+  }
+  body[data-trace-mode="file"] #fileAnalysisPanel {
+    border-top-left-radius:0 !important;
+  }
+  body[data-trace-mode="file"] #fileAnalysisPanel::before {
+    left:0;
+    width:calc(50% - 6px);
+  }
+  body[data-trace-mode="direct"] #directAnalysisPanel {
+    border-top-right-radius:0 !important;
+  }
+  body[data-trace-mode="direct"] #directAnalysisPanel::before {
+    right:0;
+    width:calc(50% - 6px);
+  }
+  /* 파일 분석도 실제 하단 패널 역할을 하도록 외곽을 복원 */
+  #fileAnalysisPanel {
+    background:#fff !important;
+    border:1px solid #d7e0ea !important;
+    box-shadow:0 12px 30px rgba(15,23,42,.065) !important;
+    padding:18px !important;
+  }
+  #fileAnalysisPanel .file-analysis-card:last-child { margin-bottom:0; }
+
+  /* ===== 한글 / English 전환 ===== */
+  .trace-language-bar {
+    margin:16px 30px -12px;
+    display:flex;
+    justify-content:flex-end;
+    align-items:center;
+    position:relative;
+    z-index:10;
+  }
+  .trace-language-switch {
+    display:inline-flex;
+    align-items:center;
+    gap:3px;
+    padding:3px;
+    border:1px solid #d5dee9;
+    border-radius:10px;
+    background:rgba(255,255,255,.92);
+    box-shadow:0 3px 12px rgba(15,23,42,.05);
+  }
+  .trace-lang-btn {
+    margin:0 !important;
+    padding:6px 10px !important;
+    border:0 !important;
+    border-radius:7px !important;
+    background:transparent !important;
+    color:#64748b !important;
+    font-size:11px !important;
+    font-weight:800 !important;
+    line-height:1 !important;
+    box-shadow:none !important;
+    transition:background .15s ease,color .15s ease,box-shadow .15s ease,transform .1s ease;
+  }
+  .trace-lang-btn:hover { background:#f1f5f9 !important; color:#24466d !important; }
+  .trace-lang-btn.active {
+    background:linear-gradient(135deg,#e8f1ff,#f4f7ff) !important;
+    color:#1d4ed8 !important;
+    box-shadow:0 1px 5px rgba(37,99,235,.10) !important;
+  }
+  .trace-lang-btn:active { transform:scale(.96); }
+  @media(max-width:900px){
+    .trace-language-bar{margin:12px 14px -7px}
+    body[data-trace-mode] .mode-panel.active::before{display:none}
+    body[data-trace-mode="file"] #fileAnalysisPanel,
+    body[data-trace-mode="direct"] #directAnalysisPanel{border-radius:14px !important}
+  }
+
 </style>
 </head>
 <body>
@@ -329,18 +428,164 @@
 <!-- 공통 헤더 + 제목 + 버전 -->
 <script>
   window.pageTitle = "ProxySG Trace 도구";
-  window.pageVersion = "ver.2026.09.23.04";
+  window.pageVersion = "ver.2026.09.23.05";
 </script> 
 <script src="https://etech-symantec.github.io/header.js"></script>
 
+<script>
+(() => {
+  const dict = {
+    ko: {
+      pageTitle:'ProxySG Trace 분석 도구', pageHeader:'ProxySG Trace 도구',
+      fileTabTitle:'📄 Trace 파일 분석', browserBadge:'브라우저',
+      fileTabDesc:'저장된 Trace 파일을 업로드하거나 내용을 붙여넣어 바로 분석합니다. 프로그램 설치 없이 사용할 수 있습니다.',
+      directTabTitle:'🛰️ ProxySG 직접 연결',
+      directTabDesc:'로컬 ProxySG에 직접 접속해 Local Policy 조회 → Trace 정책 적용 → LIVE Trace 조회/분석까지 한 번에 수행합니다.',
+      traceInputTitle:'📄 Trace 입력', noFile:'(선택된 파일 없음)',
+      traceInputDesc:'저장된 Trace 파일을 업로드하거나 내용을 붙여넣으면 브라우저에서 바로 분석합니다.',
+      tracePlaceholder:'여기에 trace 로그를 붙여넣거나 파일을 끌어 놓으세요.',
+      analysisTools:'📦 분석 도구', analyzeBtn:'🔍 분석 실행', saveHtmlBtn:'💾 결과 HTML로 저장', downloadScript:'⬇️ 스크립트 다운받기',
+      sessionSelect:'세션 선택:', sessionSearch:'키워드로 검색 (예: GET, URL, ID 등)', showMiss:'miss 보기', showNA:'n/a 보기', showLate:'late 보기', timezone:'타임존:',
+      analysisResult:'📝 분석 결과', initialResult:'(분석 결과가 여기에 표시됩니다)',
+      directTitle:'🛰️ ProxySG 직접 연결 분석', directDesc:'브라우저에서 SSH/HTTPS를 직접 처리하지 않고, PC의 로컬 Trace Editor가 ProxySG에 연결합니다. Launcher가 설치되어 있지 않으면 실행 버튼에서 자동으로 설치 안내로 전환됩니다.',
+      directFlowAria:'ProxySG 직접 연결 사용 절차', step1Title:'1. 장비 설정', step1Desc:'SSH 및 Management HTTPS 정보를 설정합니다.',
+      step2Title:'2. Trace 정책', step2Desc:'조건을 지정하고 Local Policy에 Trace CPL을 적용합니다. 테스트 완료 후에는 추가했던 Trace 정책을 삭제할 수도 있습니다.',
+      step3Title:'3. LIVE Trace', step3Desc:'HTTPS로 Trace와 Access Log를 실시간 조회합니다.',
+      step4Title:'4. 즉시 분석', step4Desc:'Verdict, Method, 응답코드, Timing 기준으로 바로 분석합니다.',
+      runEditorTitle:'🚀 Trace Editor 실행', runEditorDesc:'설치된 Launcher를 자동 확인합니다. 설치되지 않았다면 안정성/기능 안내 모달을 표시하고 설치 파일 다운로드를 시작합니다.',
+      localStructure:'🔐 로컬 실행 구조', localDescBefore:'Launcher 상태 확인은', localDescAfter:'에서만 이루어집니다. 장비 접속 정보는 Launcher가 수집하거나 웹 서버로 전달하지 않습니다. Editor 업데이트 파일은 SHA-256을 확인한 뒤 실행합니다.',
+      smartScreenNote:'처음 설치할 때 Windows SmartScreen이 표시될 수 있습니다. 현재 Launcher는 상용 코드 서명 인증서로 서명되지 않았기 때문이며, 설치 모달에서 설치 위치·무결성 검증 방식·기능을 확인할 수 있습니다.',
+      kbTitle:'🔗 Broadcom Knowledge Base', close:'닫기',
+      noInput:'텍스트를 입력하거나 파일을 업로드하세요.', noTransactions:'분석할 트랜잭션 구간이 없습니다.', noInfo:'정보 없음', timingRef:'📘 Timing 상세설명 보기',
+      internalPolicy:'내부 참조 정책', localPolicy:'Local 정책', vpmPolicy:'VPM 정책'
+    },
+    en: {
+      pageTitle:'ProxySG Trace Analysis Tool', pageHeader:'ProxySG Trace Tools',
+      fileTabTitle:'📄 Trace File Analysis', browserBadge:'Browser',
+      fileTabDesc:'Upload a saved Trace file or paste its contents for immediate analysis. No software installation is required.',
+      directTabTitle:'🛰️ Direct ProxySG Connection',
+      directTabDesc:'Connect directly to a local ProxySG to review Local Policy, apply a Trace policy, and run LIVE Trace analysis end to end.',
+      traceInputTitle:'📄 Trace Input', noFile:'(No file selected)',
+      traceInputDesc:'Upload a saved Trace file or paste its contents to analyze it directly in the browser.',
+      tracePlaceholder:'Paste Trace logs here or drop a file.',
+      analysisTools:'📦 Analysis Tools', analyzeBtn:'🔍 Analyze', saveHtmlBtn:'💾 Save Result as HTML', downloadScript:'⬇️ Download Script',
+      sessionSelect:'Session:', sessionSearch:'Search by keyword (e.g. GET, URL, ID)', showMiss:'Show miss', showNA:'Show n/a', showLate:'Show late', timezone:'Time zone:',
+      analysisResult:'📝 Analysis Result', initialResult:'(Analysis results will appear here)',
+      directTitle:'🛰️ Direct ProxySG Analysis', directDesc:'SSH/HTTPS is not handled by the browser. The local Trace Editor on your PC connects to ProxySG. If the Launcher is not installed, the Run button automatically opens the installation guide.',
+      directFlowAria:'Direct ProxySG workflow', step1Title:'1. Device Settings', step1Desc:'Configure SSH and Management HTTPS connection information.',
+      step2Title:'2. Trace Policy', step2Desc:'Define conditions and apply Trace CPL to Local Policy. After testing, you can also remove the Trace policy that was added.',
+      step3Title:'3. LIVE Trace', step3Desc:'View Trace and Access Log data live over HTTPS.',
+      step4Title:'4. Instant Analysis', step4Desc:'Analyze immediately by Verdict, Method, response code, and Timing.',
+      runEditorTitle:'🚀 Run Trace Editor', runEditorDesc:'The page automatically checks for the installed Launcher. If it is not installed, an installation and safety guide appears and the setup download starts.',
+      localStructure:'🔐 Local Execution Architecture', localDescBefore:'Launcher status is checked only on', localDescAfter:'. Device credentials are not collected by the Launcher or sent to the web server. Editor update files are verified with SHA-256 before execution.',
+      smartScreenNote:'Windows SmartScreen may appear during the first installation. The Launcher is not currently signed with a commercial code-signing certificate; the installation dialog explains the install location, integrity verification, and functionality.',
+      kbTitle:'🔗 Broadcom Knowledge Base', close:'Close',
+      noInput:'Enter text or upload a file.', noTransactions:'No transaction blocks were found to analyze.', noInfo:'No information', timingRef:'📘 View Timing Details',
+      internalPolicy:'Internal Reference Policy', localPolicy:'Local Policy', vpmPolicy:'VPM Policy'
+    }
+  };
+  window.traceI18nT = (key) => (dict[window.PROXYSG_LANG || 'ko'] || dict.ko)[key] || key;
+
+  const launcherText = {
+    'ProxySG Trace 도구':'ProxySG Trace Tools',
+    '최신 버전 확인 중':'Checking latest version', 'PC 상태 확인 중':'Checking PC status', '확인 중':'Checking',
+    '▶ Trace Editor 실행':'▶ Run Trace Editor', '↻ 설치 상태 확인':'↻ Check Installation', 'Launcher 설치/복구':'Install/Repair Launcher',
+    '설치되어 있지 않으면':'If not installed',
+    '실행 버튼을 눌렀을 때 자동으로 설치 안내 모달이 열리고 Setup 파일 다운로드가 시작됩니다.':'clicking Run automatically opens the installation guide and starts the Setup download.',
+    '🛡️ ProxySG Trace Launcher 최초 설치':'🛡️ Initial ProxySG Trace Launcher Setup',
+    '로컬 ProxySG에 직접 연결하려면 Windows Launcher가 한 번 필요합니다.':'A one-time Windows Launcher installation is required for direct local ProxySG access.',
+    'Launcher는 웹페이지와 로컬 Trace Editor를 연결하는 작은 실행 도우미입니다. 설치 후에는 이 페이지의':'The Launcher is a small helper that connects this web page to the local Trace Editor. After installation, you can use the',
+    '버튼만으로 최신 버전을 확인하고 실행할 수 있습니다.':'button on this page to check and run the latest version.',
+    '🔒 관리자 권한 불필요':'🔒 No administrator rights required', '현재 Windows 사용자 영역(%LOCALAPPDATA%)에만 설치합니다.':'Installs only in the current Windows user area (%LOCALAPPDATA%).',
+    '🏠 로컬 전용 상태 서비스':'🏠 Local-only status service', '127.0.0.1:58321에만 바인딩되며 외부 PC에서는 접근할 수 없습니다.':'Binds only to 127.0.0.1:58321 and cannot be accessed from another PC.',
+    '✅ 무결성 확인':'✅ Integrity verification', 'Trace Editor를 실행하기 전에 배포 정보의 SHA-256과 다운로드 파일을 비교합니다.':'Compares the downloaded file against the SHA-256 in the release metadata before running Trace Editor.',
+    '🔄 자동 최신 버전':'🔄 Automatic latest version', '실행할 때마다 GitHub Pages의 최신 버전을 확인하고 필요한 경우에만 업데이트합니다.':'Checks the latest version on GitHub Pages at launch and updates only when needed.',
+    '🔑 장비 계정 분리':'🔑 Device credentials stay separate', 'Launcher 자체는 ProxySG ID/비밀번호를 수집하거나 서버로 전송하지 않습니다.':'The Launcher itself does not collect or send ProxySG IDs or passwords to the server.',
+    '🧩 직접 분석 기능':'🧩 Direct analysis features', 'Local Policy 조회/Trace 정책 적용/HTTPS LIVE Trace 조회와 분석을 로컬 Editor에서 수행합니다.':'The local Editor handles Local Policy review, Trace policy application, HTTPS LIVE Trace viewing, and analysis.',
+    '설치 위치:':'Install location:', '다운로드 출처:':'Download source:', 'Windows SmartScreen 안내:':'Windows SmartScreen:',
+    '현재 설치 파일은 상용 코드 서명 인증서로 서명되지 않았으므로 PC 환경에 따라 ‘알 수 없는 게시자’ 경고가 표시될 수 있습니다. 파일 출처와 SHA-256을 확인한 뒤 진행하세요.':'The installer is not currently signed with a commercial code-signing certificate, so Windows may show an “Unknown publisher” warning. Verify the download source and SHA-256 before continuing.',
+    '설치 파일을 자동으로 다운로드합니다.':'The installer will download automatically.', '설치 완료 확인':'Check Installation', '설치 파일 다시 받기':'Download Setup Again', '확인':'OK',
+    '설치 파일 다운로드를 다시 시작했습니다.':'The setup download has restarted.', 'Launcher 설치 상태 확인 중...':'Checking Launcher installation...',
+    '설치 확인 완료. Trace Editor를 실행합니다.':'Installation confirmed. Starting Trace Editor.', '아직 Launcher가 확인되지 않습니다. 다운로드한 Setup EXE를 실행해 주세요.':'Launcher is not detected yet. Run the downloaded Setup EXE.',
+    'Launcher가 없어 설치 파일 다운로드를 시작합니다.':'Launcher was not found. Starting the setup download.', 'Launcher 설치가 필요합니다.':'Launcher installation is required.',
+    'Launcher 확인 중':'Checking Launcher', '실행 요청 완료':'Launch requested', 'Launcher 연결됨':'Launcher connected', '설치 필요':'Installation required',
+    'Launcher 설치됨':'Launcher installed', 'Editor 미설치':'Editor not installed', 'Launcher 미확인':'Launcher not detected', 'PC 상태 확인 불가':'Unable to check PC status',
+    'Launcher 실행 요청 실패':'Launcher run request failed'
+  };
+  const reverseLauncher = Object.fromEntries(Object.entries(launcherText).map(([k,v])=>[v,k]));
+
+  function translateLooseText(root=document.body){
+    if(!root) return;
+    const lang=window.PROXYSG_LANG || 'ko';
+    const map = lang==='en' ? launcherText : reverseLauncher;
+    const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
+    const nodes=[]; while(walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach(n=>{
+      const raw=n.nodeValue || ''; const lead=(raw.match(/^\s*/)||[''])[0], trail=(raw.match(/\s*$/)||[''])[0];
+      const core=raw.trim(); if(!core) return;
+      if(map[core]) n.nodeValue=lead+map[core]+trail;
+      else if(lang==='en'){
+        let m=core.match(/^최신 Editor v(.+)$/); if(m) n.nodeValue=lead+'Latest Editor v'+m[1]+trail;
+      } else {
+        let m=core.match(/^Latest Editor v(.+)$/); if(m) n.nodeValue=lead+'최신 Editor v'+m[1]+trail;
+      }
+    });
+    root.querySelectorAll?.('[aria-label="닫기"]').forEach(el=>{ if(lang==='en') el.setAttribute('aria-label','Close'); });
+    root.querySelectorAll?.('[aria-label="Close"]').forEach(el=>{ if(lang==='ko') el.setAttribute('aria-label','닫기'); });
+  }
+
+  function applyLanguage(lang, rerun=false){
+    lang = lang === 'en' ? 'en' : 'ko';
+    window.PROXYSG_LANG=lang;
+    localStorage.setItem('proxysgTraceLanguage',lang);
+    document.documentElement.lang=lang;
+    const d=dict[lang];
+    document.querySelectorAll('[data-i18n]').forEach(el=>{ const k=el.dataset.i18n; if(d[k]!=null) el.textContent=d[k]; });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el=>{ const k=el.dataset.i18nPlaceholder; if(d[k]!=null) el.setAttribute('placeholder',d[k]); });
+    document.querySelectorAll('[data-i18n-aria]').forEach(el=>{ const k=el.dataset.i18nAria; if(d[k]!=null) el.setAttribute('aria-label',d[k]); });
+    document.title=d.pageTitle;
+    const fileName=document.getElementById('fileNameDisplay');
+    if(fileName && !document.getElementById('fileInput')?.files?.length) fileName.textContent=d.noFile;
+    const result=document.getElementById('result');
+    if(result && (!window.sessions || !window.sessions.length) && !document.getElementById('inputText')?.value.trim()) result.textContent=d.initialResult;
+    document.querySelectorAll('.trace-lang-btn').forEach(btn=>btn.classList.toggle('active',btn.dataset.lang===lang));
+    const ref=document.getElementById('refBtn'); if(ref) ref.textContent=d.timingRef;
+    translateLooseText(document.body);
+    window.dispatchEvent(new CustomEvent('proxysg-language-change',{detail:{lang}}));
+    if(rerun && document.getElementById('inputText')?.value.trim()) setTimeout(()=>document.getElementById('analyzeBtn')?.click(),0);
+  }
+
+  const initial=localStorage.getItem('proxysgTraceLanguage')==='en'?'en':'ko';
+  document.querySelectorAll('.trace-lang-btn').forEach(btn=>btn.addEventListener('click',()=>applyLanguage(btn.dataset.lang,true)));
+  applyLanguage(initial,false);
+
+  const mo=new MutationObserver(muts=>{
+    for(const m of muts){
+      m.addedNodes.forEach(n=>{ if(n.nodeType===1) translateLooseText(n); else if(n.nodeType===3) translateLooseText(n.parentElement); });
+    }
+  });
+  mo.observe(document.body,{childList:true,subtree:true,characterData:true});
+  window.traceSetLanguage=applyLanguage;
+})();
+</script>
+
+
+
+<div class="trace-language-bar" aria-label="Language">
+  <div class="trace-language-switch">
+    <button type="button" class="trace-lang-btn active" data-lang="ko">한국어</button>
+    <button type="button" class="trace-lang-btn" data-lang="en">English</button>
+  </div>
+</div>
+
 <div class="trace-mode-wrap" id="traceModeWrap">
   <button type="button" class="trace-mode-card active" data-trace-mode="file">
-    <div class="trace-mode-title">📄 Trace 파일 분석 <span class="trace-mode-badge">브라우저</span></div>
-    <div class="trace-mode-desc">저장된 Trace 파일을 업로드하거나 내용을 붙여넣어 바로 분석합니다. 프로그램 설치 없이 사용할 수 있습니다.</div>
+    <div class="trace-mode-title"><span data-i18n="fileTabTitle">📄 Trace 파일 분석</span> <span class="trace-mode-badge" data-i18n="browserBadge">브라우저</span></div>
+    <div class="trace-mode-desc" data-i18n="fileTabDesc">저장된 Trace 파일을 업로드하거나 내용을 붙여넣어 바로 분석합니다. 프로그램 설치 없이 사용할 수 있습니다.</div>
   </button>
   <button type="button" class="trace-mode-card" data-trace-mode="direct">
-    <div class="trace-mode-title">🛰️ ProxySG 직접 연결 <span class="trace-mode-badge">Windows Editor</span></div>
-    <div class="trace-mode-desc">로컬 ProxySG에 직접 접속해 Local Policy 조회 → Trace 정책 적용 → LIVE Trace 조회/분석까지 한 번에 수행합니다.</div>
+    <div class="trace-mode-title"><span data-i18n="directTabTitle">🛰️ ProxySG 직접 연결</span> <span class="trace-mode-badge">Windows Editor</span></div>
+    <div class="trace-mode-desc" data-i18n="directTabDesc">로컬 ProxySG에 직접 접속해 Local Policy 조회 → Trace 정책 적용 → LIVE Trace 조회/분석까지 한 번에 수행합니다.</div>
   </button>
 </div>
 
@@ -353,17 +598,17 @@
       gap:8px;
       margin:0 0 5px;
     ">
-      📄 Trace 입력
+      <span data-i18n="traceInputTitle">📄 Trace 입력</span>
       <span id="fileNameDisplay" style="font-size:.82rem;color:#667085;font-weight:400;">(선택된 파일 없음)</span>
     </h2>
     <div class="file-analysis-subtle" style="margin-bottom:12px;">
-      저장된 Trace 파일을 업로드하거나 내용을 붙여넣으면 브라우저에서 바로 분석합니다.
+      <span data-i18n="traceInputDesc">저장된 Trace 파일을 업로드하거나 내용을 붙여넣으면 브라우저에서 바로 분석합니다.</span>
     </div>
 
     <div class="file-input-grid">
       <!-- 🔹 왼쪽: Trace 입력창 -->
       <div class="file-input-pane">
-        <textarea id="inputText" placeholder="여기에 trace 로그를 붙여넣거나 파일을 끌어 놓으세요." style="width:100%;box-sizing:border-box;margin:0;"></textarea>
+        <textarea id="inputText" data-i18n-placeholder="tracePlaceholder" placeholder="여기에 trace 로그를 붙여넣거나 파일을 끌어 놓으세요." style="width:100%;box-sizing:border-box;margin:0;"></textarea>
       </div>
 
       <!-- 🔹 오른쪽: 카드형 분석 도구 -->
@@ -377,7 +622,7 @@
         align-items: center;
         gap: 6px;
       ">
-        📦 분석 도구
+        <span data-i18n="analysisTools">📦 분석 도구</span>
       </h3>
 
       <input type="file" id="fileInput" accept=".txt" style="
@@ -397,7 +642,7 @@
         cursor:pointer;
         font-weight:600;
         transition: background 0.2s;
-      ">🔍 분석 실행</button>
+      "><span data-i18n="analyzeBtn">🔍 분석 실행</span></button>
 
       <button id="downloadBtn" style="
         background:#10b981;
@@ -408,7 +653,7 @@
         cursor:pointer;
         font-weight:600;
         transition: background 0.2s;
-      ">💾 결과 HTML로 저장</button>
+      "><span data-i18n="saveHtmlBtn">💾 결과 HTML로 저장</span></button>
 
       <a href="trace_downloader.py" download="trace_downloader.py" style="
         background:#8b5cf6;
@@ -423,7 +668,7 @@
         text-decoration: none;
         margin-top: 10px;
         display: block;
-      ">⬇️ 스크립트 다운받기</a>
+      "><span data-i18n="downloadScript">⬇️ 스크립트 다운받기</span></a>
 
       </div>
     </div>
@@ -431,13 +676,13 @@
 
   <div id="sessionSelectorContainer" class="file-analysis-card" style="display:none; margin-top:10px; margin-bottom:8px;">
     <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-      <label style="white-space:nowrap; font-weight:400;"><b>세션 선택:</b></label>
+      <label style="white-space:nowrap; font-weight:400;"><b data-i18n="sessionSelect">세션 선택:</b></label>
 
       <!-- 🔎 검색 입력창 -->
       <input 
         type="text" 
         id="sessionSearchInput" 
-        placeholder="키워드로 검색 (예: GET, URL, ID 등)" 
+        data-i18n-placeholder="sessionSearch" placeholder="키워드로 검색 (예: GET, URL, ID 등)" 
         style="
           flex:1;
           padding: 6px 10px;
@@ -456,13 +701,13 @@
 
   <div class="filter-box file-analysis-card" id="filterBox" style="display:none;">
     <div style="display:flex; align-items:center; gap:15px; flex:1;">
-      <label><input type="checkbox" id="showMiss"> miss 보기 (<span id="missCount">0</span>)</label>
-      <label><input type="checkbox" id="showNA"> n/a 보기 (<span id="naCount">0</span>)</label>
-      <label><input type="checkbox" id="showLate"> late 보기 (<span id="lateCount">0</span>)</label>
+      <label><input type="checkbox" id="showMiss"> <span data-i18n="showMiss">miss 보기</span> (<span id="missCount">0</span>)</label>
+      <label><input type="checkbox" id="showNA"> <span data-i18n="showNA">n/a 보기</span> (<span id="naCount">0</span>)</label>
+      <label><input type="checkbox" id="showLate"> <span data-i18n="showLate">late 보기</span> (<span id="lateCount">0</span>)</label>
     </div>
     
     <div style="margin-left:auto; display:flex; align-items:center; gap:6px;">
-      <label for="tzOffset">타임존:</label>
+      <label for="tzOffset" data-i18n="timezone">타임존:</label>
       <select id="tzOffset" style="border:1px solid #ccc; border-radius:6px; padding:2px 6px;">
         <script>
           for (let i = 12; i >= -12; i--) {
@@ -480,7 +725,7 @@
 
 
   <div class="file-analysis-card">
-    <h2 style="display:flex;align-items:baseline;gap:8px;margin:0 0 8px;">📝 분석 결과</h2>
+    <h2 style="display:flex;align-items:baseline;gap:8px;margin:0 0 8px;" data-i18n="analysisResult">📝 분석 결과</h2>
     <pre id="result" style="margin:0;">(분석 결과가 여기에 표시됩니다)</pre>
   </div>
 
@@ -488,26 +733,26 @@
 
 
 <div id="directAnalysisPanel" class="container mode-panel">
-  <h2 style="margin:14px 0 4px; color:#1e3a5f;">🛰️ ProxySG 직접 연결 분석</h2>
-  <div style="font-size:.8rem;color:#667085;line-height:1.6;">브라우저에서 SSH/HTTPS를 직접 처리하지 않고, PC의 로컬 Trace Editor가 ProxySG에 연결합니다. Launcher가 설치되어 있지 않으면 실행 버튼에서 자동으로 설치 안내로 전환됩니다.</div>
+  <h2 style="margin:14px 0 4px; color:#1e3a5f;" data-i18n="directTitle">🛰️ ProxySG 직접 연결 분석</h2>
+  <div style="font-size:.8rem;color:#667085;line-height:1.6;" data-i18n="directDesc">브라우저에서 SSH/HTTPS를 직접 처리하지 않고, PC의 로컬 Trace Editor가 ProxySG에 연결합니다. Launcher가 설치되어 있지 않으면 실행 버튼에서 자동으로 설치 안내로 전환됩니다.</div>
 
   <div class="direct-hero">
-    <div class="direct-flow" aria-label="ProxySG 직접 연결 사용 절차">
-      <div class="direct-step"><b>1. 장비 설정</b><span>SSH 및 Management HTTPS 정보를 설정합니다.</span></div>
-      <div class="direct-step"><b>2. Trace 정책</b><span>조건을 지정하고 Local Policy에 Trace CPL을 적용합니다. 테스트 완료 후에는 추가했던 Trace 정책을 삭제할 수도 있습니다.</span></div>
-      <div class="direct-step"><b>3. LIVE Trace</b><span>HTTPS로 Trace와 Access Log를 실시간 조회합니다.</span></div>
-      <div class="direct-step"><b>4. 즉시 분석</b><span>Verdict, Method, 응답코드, Timing 기준으로 바로 분석합니다.</span></div>
+    <div class="direct-flow" data-i18n-aria="directFlowAria" aria-label="ProxySG 직접 연결 사용 절차">
+      <div class="direct-step"><b data-i18n="step1Title">1. 장비 설정</b><span data-i18n="step1Desc">SSH 및 Management HTTPS 정보를 설정합니다.</span></div>
+      <div class="direct-step"><b data-i18n="step2Title">2. Trace 정책</b><span data-i18n="step2Desc">조건을 지정하고 Local Policy에 Trace CPL을 적용합니다. 테스트 완료 후에는 추가했던 Trace 정책을 삭제할 수도 있습니다.</span></div>
+      <div class="direct-step"><b data-i18n="step3Title">3. LIVE Trace</b><span data-i18n="step3Desc">HTTPS로 Trace와 Access Log를 실시간 조회합니다.</span></div>
+      <div class="direct-step"><b data-i18n="step4Title">4. 즉시 분석</b><span data-i18n="step4Desc">Verdict, Method, 응답코드, Timing 기준으로 바로 분석합니다.</span></div>
     </div>
 
     <div class="direct-card launcher-host-card">
-      <h3>🚀 Trace Editor 실행</h3>
-      <p style="margin-bottom:12px;">설치된 Launcher를 자동 확인합니다. 설치되지 않았다면 안정성/기능 안내 모달을 표시하고 설치 파일 다운로드를 시작합니다.</p>
+      <h3 data-i18n="runEditorTitle">🚀 Trace Editor 실행</h3>
+      <p style="margin-bottom:12px;" data-i18n="runEditorDesc">설치된 Launcher를 자동 확인합니다. 설치되지 않았다면 안정성/기능 안내 모달을 표시하고 설치 파일 다운로드를 시작합니다.</p>
       <div id="proxysg-launcher-slot"></div>
 
       <div class="direct-local-structure">
-        <div class="direct-local-title">🔐 로컬 실행 구조</div>
-        <p>Launcher 상태 확인은 <b>127.0.0.1</b>에서만 이루어집니다. 장비 접속 정보는 Launcher가 수집하거나 웹 서버로 전달하지 않습니다. Editor 업데이트 파일은 SHA-256을 확인한 뒤 실행합니다.</p>
-        <div class="direct-note">처음 설치할 때 Windows SmartScreen이 표시될 수 있습니다. 현재 Launcher는 상용 코드 서명 인증서로 서명되지 않았기 때문이며, 설치 모달에서 설치 위치·무결성 검증 방식·기능을 확인할 수 있습니다.</div>
+        <div class="direct-local-title" data-i18n="localStructure">🔐 로컬 실행 구조</div>
+        <p><span data-i18n="localDescBefore">Launcher 상태 확인은</span> <b>127.0.0.1</b><span data-i18n="localDescAfter">에서만 이루어집니다. 장비 접속 정보는 Launcher가 수집하거나 웹 서버로 전달하지 않습니다. Editor 업데이트 파일은 SHA-256을 확인한 뒤 실행합니다.</span></p>
+        <div class="direct-note" data-i18n="smartScreenNote">처음 설치할 때 Windows SmartScreen이 표시될 수 있습니다. 현재 Launcher는 상용 코드 서명 인증서로 서명되지 않았기 때문이며, 설치 모달에서 설치 위치·무결성 검증 방식·기능을 확인할 수 있습니다.</div>
       </div>
     </div>
   </div>
@@ -539,14 +784,14 @@ let sessions = [];
 document.getElementById("analyzeBtn").addEventListener("click", () => {
   const text = document.getElementById("inputText").value;
   if (!text.trim()) {
-    alert("텍스트를 입력하거나 파일을 업로드하세요.");
+    alert(window.traceI18nT("noInput"));
     return;
   }
 
   const pattern = /start transaction[\s\S]*?stop transaction/gi;
   const matches = text.match(pattern);
   if (!matches) {
-    document.getElementById("result").textContent = "분석할 트랜잭션 구간이 없습니다.";
+    document.getElementById("result").textContent = window.traceI18nT("noTransactions");
     return;
   }
 
@@ -559,7 +804,7 @@ document.getElementById("analyzeBtn").addEventListener("click", () => {
       sessionHeader = lines[1].replace(/^start\s+/i, "").trim();
     }
 
-    let urlLine = "정보 없음";
+    let urlLine = window.traceI18nT("noInfo");
     const timeIdx = lines.findIndex(line => /^time\s*:/i.test(line));
     if (timeIdx !== -1 && lines[timeIdx + 1]) {
       const nextLine = lines[timeIdx + 1].trim();
@@ -612,7 +857,7 @@ document.getElementById("analyzeBtn").addEventListener("click", () => {
           if (!lines.slice(0, i).some(l => /^<[^>]*@/.test(l))) {
             allLines.push({
               type: "normal",
-              content: `<span style="color:#a1a1a1;"><br>───[ 내부 참조 정책 ]────────────────────────────────────────────────</span>`
+              content: `<span style="color:#a1a1a1;"><br>───[ ${window.traceI18nT("internalPolicy")} ]────────────────────────────────────────────────</span>`
             });
           }
 
@@ -624,11 +869,11 @@ document.getElementById("analyzeBtn").addEventListener("click", () => {
 
         // ② Local 정책 ([local:] 포함)
         if (/\[local:/i.test(line)) {
-          const alreadyLocal = allLines.some(l => l.content?.includes("───[ Local 정책 ]"));
+          const alreadyLocal = allLines.some(l => l.content?.includes(`───[ ${window.traceI18nT("localPolicy")} ]`));
           if (!alreadyLocal) {
             allLines.push({
               type: "normal",
-              content: `<span style="color:#F49BAB;"><br>───[ Local 정책 ]──────────────────────────────────────────────────</span>`
+              content: `<span style="color:#F49BAB;"><br>───[ ${window.traceI18nT("localPolicy")} ]──────────────────────────────────────────────────</span>`
             });
           }
           allLines.push({
@@ -638,11 +883,11 @@ document.getElementById("analyzeBtn").addEventListener("click", () => {
 
         // ③ VPM 정책 (@ 없음, [local:] 없음)
         const prevHasAt = lines.slice(0, i).some(l => /^<[^>]*@/.test(l));
-        const alreadyVPM = allLines.some(l => l.content?.includes("───[ VPM 정책 ]"));
+        const alreadyVPM = allLines.some(l => l.content?.includes(`───[ ${window.traceI18nT("vpmPolicy")} ]`));
         if (prevHasAt && !alreadyVPM) {
           allLines.push({
             type: "normal",
-            content: `<span style="color:#77BEF0;"><br>───[ VPM 정책 ]──────────────────────────────────────────────────</span>`
+            content: `<span style="color:#77BEF0;"><br>───[ ${window.traceI18nT("vpmPolicy")} ]──────────────────────────────────────────────────</span>`
           });
         }
 
@@ -907,7 +1152,7 @@ function renderSession(index) {
   if (!refBtn) {
     refBtn = document.createElement("button");
     refBtn.id = "refBtn";
-    refBtn.textContent = "📘 Timing 상세설명 보기";
+    refBtn.textContent = window.traceI18nT("timingRef");
     refBtn.style.cssText = `
       position: absolute;
       right: 50px;
@@ -1064,7 +1309,7 @@ document.addEventListener("click", (e) => {
     position:relative;
   ">
     <div style="background:#1e3a5f; color:#fff; padding:10px 16px; display:flex; justify-content:space-between; align-items:center;">
-      <span style="font-weight:600;">🔗 Broadcom Knowledge Base</span>
+      <span style="font-weight:600;" data-i18n="kbTitle">🔗 Broadcom Knowledge Base</span>
       <button id="closeRef" style="
         background:none; border:none; color:#fff; font-size:22px; cursor:pointer; line-height:1;
       ">&times;</button>
@@ -1083,6 +1328,7 @@ document.addEventListener("click", (e) => {
 
   function setTraceMode(mode, updateUrl = true) {
     const direct = mode === 'direct';
+    document.body.dataset.traceMode = direct ? 'direct' : 'file';
     filePanel?.classList.toggle('active', !direct);
     directPanel?.classList.toggle('active', direct);
     buttons.forEach(btn => btn.classList.toggle('active', btn.dataset.traceMode === (direct ? 'direct' : 'file')));
