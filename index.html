@@ -259,6 +259,58 @@
   }
   @media(max-width:600px){.direct-flow{grid-template-columns:1fr}}
 
+
+  /* ===== 파일 분석 페이지 카드 스타일 ===== */
+  #fileAnalysisPanel {
+    background: transparent;
+    box-shadow: none;
+    border: 0;
+    padding: 0;
+  }
+  .file-analysis-card {
+    background: linear-gradient(180deg,#ffffff 0%,#fbfcfe 100%);
+    border: 1px solid #dce4ee;
+    border-radius: 14px;
+    box-shadow: 0 5px 16px rgba(15,23,42,.04);
+    padding: 18px 20px;
+    margin-bottom: 14px;
+  }
+  .file-analysis-card h2,
+  .file-analysis-card h3 {
+    color: #17385f;
+  }
+  .file-input-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(250px, .28fr);
+    gap: 18px;
+    align-items: stretch;
+  }
+  .file-input-pane {
+    background:#f8fafc;
+    border:1px solid #e3e9f1;
+    border-radius:12px;
+    padding:12px;
+  }
+  .file-tool-card {
+    background:linear-gradient(180deg,#f8fafc 0%,#f3f7fb 100%) !important;
+    border:1px solid #dce4ee !important;
+    border-radius:12px !important;
+    box-shadow:none !important;
+    padding:14px 16px !important;
+  }
+  .file-analysis-subtle {
+    color:#667085;
+    font-size:.78rem;
+    line-height:1.55;
+  }
+  #sessionSelectorContainer.file-analysis-card,
+  #filterBox.file-analysis-card {
+    margin-top: 0 !important;
+  }
+  @media(max-width:900px){
+    .file-input-grid{grid-template-columns:1fr}
+  }
+
 </style>
 </head>
 <body>
@@ -266,7 +318,7 @@
 <!-- 공통 헤더 + 제목 + 버전 -->
 <script>
   window.pageTitle = "ProxySG Trace 도구";
-  window.pageVersion = "ver.2026.09.23.02";
+  window.pageVersion = "ver.2026.09.23.03";
 </script> 
 <script src="https://etech-symantec.github.io/header.js"></script>
 
@@ -283,42 +335,28 @@
 
 
 <div id="fileAnalysisPanel" class="container mode-panel active">
-  <h2 style="
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-    margin-bottom: 6px;   /* 👈 아래 여백을 줄임 (기본은 16px~20px 수준) */
-    margin-top: 14px;       /* 👈 위쪽 여백도 살짝 줄임 */
-  ">
-    📄 Trace 입력
-    <span id="fileNameDisplay" 
-          style="font-size: 0.85rem; color: #6b7280; font-weight: 400;">
-      (선택된 파일 없음)
-    </span>
-  </h2>
-
-
-
-
-  <div style="display:flex; gap:20px; align-items:flex-start;">
-
-    <!-- 🔹 왼쪽: Trace 입력창 -->
-    <div style="flex:1;">
-      <textarea id="inputText" placeholder="여기에 trace 로그를 붙여넣거나 파일을 끌어 놓으세요."></textarea>
+  <div class="file-analysis-card">
+    <h2 style="
+      display:flex;
+      align-items:baseline;
+      gap:8px;
+      margin:0 0 5px;
+    ">
+      📄 Trace 입력
+      <span id="fileNameDisplay" style="font-size:.82rem;color:#667085;font-weight:400;">(선택된 파일 없음)</span>
+    </h2>
+    <div class="file-analysis-subtle" style="margin-bottom:12px;">
+      저장된 Trace 파일을 업로드하거나 내용을 붙여넣으면 브라우저에서 바로 분석합니다.
     </div>
 
-    <!-- 🔹 오른쪽: 카드형 분석 도구 -->
-    <div style="
-      width: 25%;
-      background: #ffffff;
-      border: 1px solid #e5e7eb;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-      padding: 16px 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    ">
+    <div class="file-input-grid">
+      <!-- 🔹 왼쪽: Trace 입력창 -->
+      <div class="file-input-pane">
+        <textarea id="inputText" placeholder="여기에 trace 로그를 붙여넣거나 파일을 끌어 놓으세요." style="width:100%;box-sizing:border-box;margin:0;"></textarea>
+      </div>
+
+      <!-- 🔹 오른쪽: 카드형 분석 도구 -->
+      <div class="file-tool-card" style="display:flex;flex-direction:column;gap:2px;">
       <h3 style="
         font-size: 1.1rem;
         margin: 0;
@@ -376,10 +414,11 @@
         display: block;
       ">⬇️ 스크립트 다운받기</a>
 
+      </div>
     </div>
   </div>
 
-  <div id="sessionSelectorContainer" style="display:none; margin-top:10px; margin-bottom:8px;">
+  <div id="sessionSelectorContainer" class="file-analysis-card" style="display:none; margin-top:10px; margin-bottom:8px;">
     <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
       <label style="white-space:nowrap; font-weight:400;"><b>세션 선택:</b></label>
 
@@ -404,7 +443,7 @@
   </div>
 
 
-  <div class="filter-box" id="filterBox" style="display:none;">
+  <div class="filter-box file-analysis-card" id="filterBox" style="display:none;">
     <div style="display:flex; align-items:center; gap:15px; flex:1;">
       <label><input type="checkbox" id="showMiss"> miss 보기 (<span id="missCount">0</span>)</label>
       <label><input type="checkbox" id="showNA"> n/a 보기 (<span id="naCount">0</span>)</label>
@@ -429,15 +468,10 @@
 
 
 
-  <h2 style="
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-    margin-bottom: 6px;   /* 👈 아래 여백을 줄임 (기본은 16px~20px 수준) */
-    margin-top: 14px;       /* 👈 위쪽 여백도 살짝 줄임 */
-  ">
-  	📝 분석 결과</h2>
-  <pre id="result">(분석 결과가 여기에 표시됩니다)</pre>
+  <div class="file-analysis-card">
+    <h2 style="display:flex;align-items:baseline;gap:8px;margin:0 0 8px;">📝 분석 결과</h2>
+    <pre id="result" style="margin:0;">(분석 결과가 여기에 표시됩니다)</pre>
+  </div>
 
 </div>
 
@@ -449,7 +483,7 @@
   <div class="direct-hero">
     <div class="direct-flow" aria-label="ProxySG 직접 연결 사용 절차">
       <div class="direct-step"><b>1. 장비 설정</b><span>SSH 및 Management HTTPS 정보를 설정합니다.</span></div>
-      <div class="direct-step"><b>2. Trace 정책</b><span>조건을 지정하고 Local Policy에 Trace CPL을 적용합니다.</span></div>
+      <div class="direct-step"><b>2. Trace 정책</b><span>조건을 지정하고 Local Policy에 Trace CPL을 적용합니다. 테스트 완료 후에는 추가했던 Trace 정책을 삭제할 수도 있습니다.</span></div>
       <div class="direct-step"><b>3. LIVE Trace</b><span>HTTPS로 Trace와 Access Log를 실시간 조회합니다.</span></div>
       <div class="direct-step"><b>4. 즉시 분석</b><span>Verdict, Method, 응답코드, Timing 기준으로 바로 분석합니다.</span></div>
     </div>
