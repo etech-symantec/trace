@@ -8,14 +8,53 @@
 
   const css = `
   .psg-launcher-shell{font-family:Inter,"Segoe UI",Pretendard,Arial,sans-serif;color:#172033}
-  .psg-launcher-card{border:1px solid #d9e1ec;border-radius:14px;background:linear-gradient(180deg,#fff,#f8fbff);padding:18px;box-shadow:0 8px 26px rgba(15,23,42,.07)}
-  .psg-launcher-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
-  .psg-launcher-title{font-size:17px;font-weight:800;color:#1e3a5f}.psg-launcher-sub{font-size:12px;color:#667085;margin-top:3px}
-  .psg-status{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;border-radius:999px;padding:5px 9px;background:#eef2f7;color:#667085;border:1px solid #d9e1ec;white-space:nowrap}
+  .psg-launcher-card{
+    position:relative;overflow:hidden;
+    border:1px solid #8fb6f2;border-radius:16px;
+    background:
+      radial-gradient(circle at 95% 0%,rgba(99,102,241,.12),transparent 28%),
+      linear-gradient(135deg,#eaf2ff 0%,#f5f8ff 46%,#eef4ff 100%);
+    padding:20px 20px 18px;
+    box-shadow:0 12px 30px rgba(30,64,175,.12),0 2px 6px rgba(15,23,42,.06),inset 0 1px 0 rgba(255,255,255,.95);
+  }
+  .psg-launcher-card::before{
+    content:"";position:absolute;left:0;top:18px;bottom:18px;width:4px;border-radius:0 4px 4px 0;
+    background:linear-gradient(180deg,#2563eb,#4f46e5);
+    box-shadow:0 0 16px rgba(37,99,235,.3);
+  }
+  .psg-launcher-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+  .psg-launcher-title{font-size:18px;font-weight:850;letter-spacing:-.25px;color:#173b70}
+  .psg-launcher-sub{font-size:12px;color:#52637a;margin-top:4px;font-weight:500}
+  .psg-status{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:800;border-radius:999px;padding:6px 10px;background:rgba(255,255,255,.78);color:#55657a;border:1px solid #c8d5e7;white-space:nowrap;box-shadow:0 2px 7px rgba(15,23,42,.05)}
   .psg-status::before{content:"";width:7px;height:7px;border-radius:50%;background:#98a2b3}.psg-status.ok{background:#ecfdf3;color:#067647;border-color:#abefc6}.psg-status.ok::before{background:#12b76a}.psg-status.warn{background:#fffaeb;color:#b54708;border-color:#fedf89}.psg-status.warn::before{background:#f79009}.psg-status.bad{background:#fef3f2;color:#b42318;border-color:#fecdca}.psg-status.bad::before{background:#f04438}
-  .psg-launcher-actions{display:flex;gap:9px;flex-wrap:wrap}.psg-launcher-btn{appearance:none;border:0;border-radius:9px;padding:10px 14px;font-size:12px;font-weight:800;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px}
-  .psg-launcher-run{background:#2563eb;color:#fff}.psg-launcher-run:hover{background:#1d4ed8}.psg-launcher-install{background:#eef2ff;color:#3730a3;border:1px solid #c7d2fe}.psg-launcher-install:hover{background:#e0e7ff}.psg-launcher-check{background:#f8fafc;color:#475467;border:1px solid #d0d5dd}.psg-launcher-btn:disabled{opacity:.55;cursor:wait}
-  .psg-launcher-note{margin-top:12px;font-size:11px;line-height:1.55;color:#667085}.psg-launcher-note strong{color:#344054}
+  .psg-launcher-actions{display:flex;gap:9px;flex-wrap:wrap}
+  .psg-launcher-btn{
+    appearance:none;border:0;border-radius:10px;padding:10px 15px;font-size:12px;font-weight:800;
+    cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;
+    transition:transform .12s ease,box-shadow .16s ease,background .16s ease,border-color .16s ease,filter .16s ease;
+    transform:translateY(0);user-select:none;
+  }
+  .psg-launcher-btn:hover{transform:translateY(-1px)}
+  .psg-launcher-btn:active{transform:translateY(1px) scale(.975);box-shadow:inset 0 2px 5px rgba(15,23,42,.18)!important;filter:saturate(.92)}
+  .psg-launcher-btn:focus-visible{outline:3px solid rgba(59,130,246,.24);outline-offset:2px}
+  .psg-launcher-run{
+    background:linear-gradient(135deg,#2563eb 0%,#3157d5 55%,#4f46e5 100%);color:#fff;
+    box-shadow:0 6px 14px rgba(37,99,235,.25),inset 0 1px 0 rgba(255,255,255,.2);
+  }
+  .psg-launcher-run:hover{background:linear-gradient(135deg,#1d4ed8,#4338ca);box-shadow:0 9px 18px rgba(37,99,235,.28)}
+  .psg-launcher-install{
+    background:#f3f0ff;color:#4338ca;border:1px solid #b9b5ff;
+    box-shadow:0 3px 8px rgba(79,70,229,.08);
+  }
+  .psg-launcher-install:hover{background:#e9e7ff;border-color:#9f9af4}
+  .psg-launcher-check{
+    background:rgba(255,255,255,.8);color:#344760;border:1px solid #bdcbe0;
+    box-shadow:0 3px 8px rgba(15,23,42,.05);
+  }
+  .psg-launcher-check:hover{background:#fff;border-color:#9db1cf}
+  .psg-launcher-btn:disabled{opacity:.55;cursor:wait;transform:none!important;box-shadow:none!important}
+  .psg-launcher-note{margin-top:14px;padding-top:11px;border-top:1px solid rgba(118,148,190,.22);font-size:11px;line-height:1.6;color:#52637a}
+  .psg-launcher-note strong{color:#27466d}
   .psg-install-modal{position:fixed;inset:0;background:rgba(15,23,42,.58);z-index:100000;display:none;align-items:center;justify-content:center;padding:18px}.psg-install-modal.show{display:flex}
   .psg-modal-card{width:min(680px,96vw);max-height:90vh;overflow:auto;background:#fff;border-radius:16px;box-shadow:0 24px 80px rgba(0,0,0,.28);padding:0;color:#172033}
   .psg-modal-head{padding:18px 20px 14px;border-bottom:1px solid #eaecf0;display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.psg-modal-title{font-size:19px;font-weight:800;color:#1e3a5f}.psg-modal-close{border:0;background:transparent;font-size:23px;line-height:1;cursor:pointer;color:#667085}
