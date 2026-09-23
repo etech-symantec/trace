@@ -311,6 +311,17 @@
     .file-input-grid{grid-template-columns:1fr}
   }
 
+
+  /* ===== Trace Editor 실행 강조 영역 ===== */
+  .launcher-host-card {
+    background: linear-gradient(135deg,#f7faff 0%,#eef4ff 100%);
+    border-color:#afc7ea;
+    box-shadow:0 10px 26px rgba(38,75,130,.08);
+  }
+  .launcher-host-card > h3 {
+    color:#153d73;
+  }
+
 </style>
 </head>
 <body>
@@ -318,7 +329,7 @@
 <!-- 공통 헤더 + 제목 + 버전 -->
 <script>
   window.pageTitle = "ProxySG Trace 도구";
-  window.pageVersion = "ver.2026.09.23.03";
+  window.pageVersion = "ver.2026.09.23.04";
 </script> 
 <script src="https://etech-symantec.github.io/header.js"></script>
 
@@ -488,7 +499,7 @@
       <div class="direct-step"><b>4. 즉시 분석</b><span>Verdict, Method, 응답코드, Timing 기준으로 바로 분석합니다.</span></div>
     </div>
 
-    <div class="direct-card">
+    <div class="direct-card launcher-host-card">
       <h3>🚀 Trace Editor 실행</h3>
       <p style="margin-bottom:12px;">설치된 Launcher를 자동 확인합니다. 설치되지 않았다면 안정성/기능 안내 모달을 표시하고 설치 파일 다운로드를 시작합니다.</p>
       <div id="proxysg-launcher-slot"></div>
