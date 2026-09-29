@@ -428,7 +428,7 @@
 <!-- 공통 헤더 + 제목 + 버전 -->
 <script>
   window.pageTitle = "ProxySG Trace 도구";
-  window.pageVersion = "ver.2026.09.29.02";
+  window.pageVersion = "ver.2026.09.29.03";
 </script> 
 <script src="https://etech-symantec.github.io/header.js"></script>
 
@@ -452,7 +452,7 @@
       step2Title:'2. Trace 정책', step2Desc:'조건을 지정하고 Local Policy에 Trace CPL을 적용합니다. 테스트 완료 후에는 추가했던 Trace 정책을 삭제할 수도 있습니다.',
       step3Title:'3. LIVE Trace', step3Desc:'HTTPS로 Trace와 Access Log를 실시간 조회합니다.',
       step4Title:'4. 즉시 분석', step4Desc:'Verdict, Method, 응답코드, Timing 기준으로 바로 분석합니다.',
-      runEditorTitle:'🚀 Trace Editor 실행', runEditorDesc:'버튼 하나로 v5 Launcher를 확인합니다. 설치되지 않은 PC에서는 설치 CMD가 자동 다운로드되며, 설치 후에는 로컬 Editor가 바로 실행됩니다.',
+      runEditorTitle:'🚀 Trace Editor 실행', runEditorDesc:'처음 사용하는 PC에서는 버튼 한 번으로 v6 설치 CMD를 다운로드합니다. 설치 완료 후 같은 버튼이 실행 버튼으로 전환됩니다.',
       localStructure:'🔐 로컬 실행 구조', localDescBefore:'Launcher는', localDescAfter:'상주하지 않으며 localhost 포트를 열지 않습니다. Editor는 ZIP으로 내려받아 SHA-256을 검증한 뒤 LocalAppData에 설치합니다.',
       smartScreenNote:'최초 설치 시 Windows가 CMD 실행 확인 또는 SmartScreen 경고를 표시할 수 있습니다. 설치 CMD는 서비스·시작프로그램·localhost Listener를 만들지 않으며, Editor ZIP 검증 및 설치만 수행합니다.',
       kbTitle:'🔗 Broadcom Knowledge Base', close:'닫기',
@@ -476,7 +476,7 @@
       step2Title:'2. Trace Policy', step2Desc:'Define conditions and apply Trace CPL to Local Policy. After testing, you can also remove the Trace policy that was added.',
       step3Title:'3. LIVE Trace', step3Desc:'View Trace and Access Log data live over HTTPS.',
       step4Title:'4. Instant Analysis', step4Desc:'Analyze immediately by Verdict, Method, response code, and Timing.',
-      runEditorTitle:'🚀 Run Trace Editor', runEditorDesc:'A single button checks the v5 Launcher. On a new PC, the installer CMD is downloaded automatically; after installation, the local Editor starts directly.',
+      runEditorTitle:'🚀 Run Trace Editor', runEditorDesc:'On a new PC, one click downloads the v6 installer CMD. After installation, the same button changes to the Run button.',
       localStructure:'🔐 Local Execution Architecture', localDescBefore:'The Launcher', localDescAfter:' is not resident and opens no localhost port. The Editor is distributed as a ZIP, SHA-256 verified, and installed under LocalAppData.',
       smartScreenNote:'Windows may show a CMD execution confirmation or SmartScreen warning during first installation. The installer creates no service, startup item, or localhost listener; it only verifies and installs the Editor ZIP.',
       kbTitle:'🔗 Broadcom Knowledge Base', close:'Close',
@@ -762,7 +762,7 @@
 
     <div class="direct-card launcher-host-card">
       <h3 data-i18n="runEditorTitle">🚀 Trace Editor 실행</h3>
-      <p style="margin-bottom:12px;" data-i18n="runEditorDesc">버튼 하나로 v5 Launcher를 확인합니다. 설치되지 않은 PC에서는 설치 CMD가 자동 다운로드되며, 설치 후에는 로컬 Editor가 바로 실행됩니다.</p>
+      <p style="margin-bottom:12px;" data-i18n="runEditorDesc">처음 사용하는 PC에서는 버튼 한 번으로 v6 설치 CMD를 다운로드합니다. 설치 완료 후 같은 버튼이 실행 버튼으로 전환됩니다.</p>
       <div id="proxysg-launcher-slot"></div>
 
       <div class="direct-local-structure">
@@ -1364,10 +1364,12 @@ document.addEventListener("click", (e) => {
 <script>
 (() => {
   const SLOT_ID='proxysg-launcher-slot';
-  const INSTALL_URL='./downloads/Install_ProxySG_Trace_Launcher_v5.cmd?v=20260929-2';
-  const PROTOCOL_URL='proxysg-trace-v5://run';
+  const INSTALL_URL='./downloads/Install_ProxySG_Trace_Launcher_v6.cmd?v=20260929-1';
+  const PROTOCOL_URL='proxysg-trace-v6://run';
+  const STORAGE_KEY='proxysgTraceLauncherInstalledVersion';
+  const VERSION='6';
 
-  function en(){
+  function isEn(){
     return document.documentElement.lang==='en' ||
       window.PROXYSG_UI_LANG==='en' ||
       localStorage.getItem('proxysgTraceLanguage')==='en';
@@ -1376,37 +1378,59 @@ document.addEventListener("click", (e) => {
   const L={
     ko:{
       title:'ProxySG Trace Editor',
-      sub:'Editor는 ZIP으로 배포하며, 설치 후에는 이 버튼 하나로 실행합니다.',
-      badge:'v5 · ZIP 배포',
+      sub:'최초 1회 설치 후에는 같은 버튼으로 로컬 Editor를 실행합니다.',
+      badge:'v6 · ZIP 배포',
+      install:'↓ Trace Editor 설치',
       run:'▶ Trace Editor 실행',
-      checking:'v5 Launcher 확인 중…',
-      installer:'v5 설치 파일 다운로드됨',
-      note:'기존 Launcher가 있어도 v5 프로토콜이 없으면 새 설치 CMD가 자동 다운로드됩니다. Editor EXE는 웹에서 직접 내려받지 않습니다.',
-      help:'다운로드된 Install_ProxySG_Trace_Launcher_v5.cmd를 한 번 실행하세요. 설치 프로그램이 Editor ZIP을 다운로드하고 SHA-256 검증 → 압축 해제 → LocalAppData 설치까지 처리합니다. 완료 후 같은 버튼을 다시 누르면 Editor가 실행됩니다.'
+      downloading:'설치 파일 다운로드됨',
+      installNote:'현재 브라우저에는 v6 설치 완료 기록이 없습니다. 버튼을 누르면 설치 CMD를 바로 다운로드합니다.',
+      runNote:'v6 설치가 확인되었습니다. 버튼을 누르면 Windows URL Protocol로 로컬 Editor를 실행합니다.',
+      help:'다운로드된 Install_ProxySG_Trace_Launcher_v6.cmd를 한 번 실행하세요. 설치가 완료되면 이 페이지가 자동으로 다시 열리고 버튼이 “Trace Editor 실행”으로 바뀝니다.'
     },
     en:{
       title:'ProxySG Trace Editor',
-      sub:'The Editor is distributed as a ZIP. After installation, this single button runs it.',
-      badge:'v5 · ZIP distribution',
+      sub:'Install once, then use the same button to run the local Editor.',
+      badge:'v6 · ZIP distribution',
+      install:'↓ Install Trace Editor',
       run:'▶ Run Trace Editor',
-      checking:'Checking v5 Launcher…',
-      installer:'v5 installer downloaded',
-      note:'Even when an older Launcher exists, the v5 installer is downloaded if the v5 protocol is missing. The browser never downloads the Editor EXE directly.',
-      help:'Run the downloaded Install_ProxySG_Trace_Launcher_v5.cmd once. It downloads the Editor ZIP, verifies SHA-256, extracts it, and installs the Editor under LocalAppData. Then click this button again.'
+      downloading:'Installer downloaded',
+      installNote:'This browser has no v6 installation record yet. Clicking the button downloads the installer CMD directly.',
+      runNote:'v6 installation is confirmed. Click the button to start the local Editor via the Windows URL protocol.',
+      help:'Run the downloaded Install_ProxySG_Trace_Launcher_v6.cmd once. When installation completes, this page opens again automatically and the button changes to “Run Trace Editor”.'
     }
   };
-  const t=()=>L[en()?'en':'ko'];
+
+  function t(){ return L[isEn()?'en':'ko']; }
+
+  function consumeInstallCallback(){
+    const u=new URL(location.href);
+    if(u.searchParams.get('launcher')==='v6-installed'){
+      localStorage.setItem(STORAGE_KEY,VERSION);
+      u.searchParams.delete('launcher');
+      history.replaceState(null,'',u);
+    }
+  }
+
+  function installed(){
+    return localStorage.getItem(STORAGE_KEY)===VERSION;
+  }
 
   function style(){
-    if(document.getElementById('psg-v5-style')) return;
+    if(document.getElementById('psg-v6-style')) return;
     const s=document.createElement('style');
-    s.id='psg-v5-style';
+    s.id='psg-v6-style';
     s.textContent=`
-      .psgv5{border:1px solid #8fb6f2;border-radius:16px;background:linear-gradient(135deg,#eaf2ff,#f8fbff 58%,#eef4ff);padding:20px;box-shadow:0 12px 30px rgba(30,64,175,.11);font-family:Inter,"Segoe UI",Arial,sans-serif;color:#19324f}
-      .psgv5-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.psgv5-title{font-size:18px;font-weight:850;color:#173b70}.psgv5-sub{font-size:12px;color:#566b84;margin-top:4px}
-      .psgv5-badge{white-space:nowrap;border:1px solid #8fd7bd;background:#ecfdf5;color:#087a55;border-radius:999px;padding:6px 9px;font-size:10px;font-weight:800}
-      .psgv5-run{margin-top:16px;border:0;border-radius:10px;padding:11px 16px;font-size:12px;font-weight:850;cursor:pointer;background:linear-gradient(135deg,#2563eb,#4f46e5);color:#fff;box-shadow:0 6px 14px rgba(37,99,235,.24);transition:.13s ease}.psgv5-run:hover{transform:translateY(-1px);box-shadow:0 9px 18px rgba(37,99,235,.28)}.psgv5-run:active{transform:translateY(1px) scale(.975);box-shadow:inset 0 2px 5px rgba(15,23,42,.2)}.psgv5-run:disabled{opacity:.72;cursor:wait;transform:none}
-      .psgv5-note{margin-top:13px;font-size:11px;line-height:1.6;color:#52657b}.psgv5-help{display:none;margin-top:12px;padding:10px 12px;border:1px solid #f2c079;border-radius:10px;background:#fff8e9;color:#7a4a12;font-size:11px;line-height:1.6}.psgv5-help.show{display:block}
+      .psgv6{border:1px solid #8fb6f2;border-radius:16px;background:linear-gradient(135deg,#eaf2ff,#f8fbff 58%,#eef4ff);padding:20px;box-shadow:0 12px 30px rgba(30,64,175,.11);font-family:Inter,"Segoe UI",Arial,sans-serif;color:#19324f}
+      .psgv6-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+      .psgv6-title{font-size:18px;font-weight:850;color:#173b70}
+      .psgv6-sub{font-size:12px;color:#566b84;margin-top:4px}
+      .psgv6-badge{white-space:nowrap;border:1px solid #8fd7bd;background:#ecfdf5;color:#087a55;border-radius:999px;padding:6px 9px;font-size:10px;font-weight:800}
+      .psgv6-btn{margin-top:16px;border:0;border-radius:10px;padding:11px 16px;font-size:12px;font-weight:850;cursor:pointer;background:linear-gradient(135deg,#2563eb,#4f46e5);color:#fff;box-shadow:0 6px 14px rgba(37,99,235,.24);transition:.13s ease}
+      .psgv6-btn:hover{transform:translateY(-1px);box-shadow:0 9px 18px rgba(37,99,235,.28)}
+      .psgv6-btn:active{transform:translateY(1px) scale(.975);box-shadow:inset 0 2px 5px rgba(15,23,42,.2)}
+      .psgv6-note{margin-top:13px;font-size:11px;line-height:1.6;color:#52657b}
+      .psgv6-help{display:none;margin-top:12px;padding:10px 12px;border:1px solid #f2c079;border-radius:10px;background:#fff8e9;color:#7a4a12;font-size:11px;line-height:1.6}
+      .psgv6-help.show{display:block}
     `;
     document.head.appendChild(s);
   }
@@ -1414,68 +1438,58 @@ document.addEventListener("click", (e) => {
   function downloadInstaller(){
     const a=document.createElement('a');
     a.href=INSTALL_URL;
-    a.download='Install_ProxySG_Trace_Launcher_v5.cmd';
+    a.download='Install_ProxySG_Trace_Launcher_v6.cmd';
     a.style.display='none';
     document.body.appendChild(a);
     a.click();
-    setTimeout(()=>a.remove(),1000);
+    setTimeout(()=>a.remove(),500);
   }
 
-  function run(){
-    const b=document.getElementById('psgv5Run');
-    const h=document.getElementById('psgv5Help');
-    const x=t();
-    if(b){b.disabled=true;b.textContent=x.checking}
-    h?.classList.remove('show');
-
-    let opened=false;
-    const mark=()=>opened=true;
-    window.addEventListener('blur',mark,{once:true});
-    document.addEventListener('visibilitychange',()=>{if(document.hidden)opened=true},{once:true});
-
-    // 사용자 클릭 이벤트 안에서 외부 URL Protocol을 직접 호출합니다.
-    // hidden iframe은 Chrome/Edge에서 ERR_UNKNOWN_URL_SCHEME로 처리되는 경우가 있어 사용하지 않습니다.
-    const a=document.createElement('a');
-    a.href=PROTOCOL_URL;
-    a.style.display='none';
-    a.setAttribute('aria-hidden','true');
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(()=>a.remove(),800);
-
-    setTimeout(()=>{
-      if(opened){
-        if(b){b.disabled=false;b.textContent=t().run}
-        return;
-      }
-      downloadInstaller();
-      if(b){b.disabled=false;b.textContent=x.installer}
-      if(h){h.textContent=x.help;h.classList.add('show')}
-      setTimeout(()=>{if(b)b.textContent=t().run},5000);
-    },2200);
+  function launchEditor(){
+    // Direct navigation from the user's click gesture.
+    // No hidden iframe and no delayed synthetic protocol request.
+    window.location.href=PROTOCOL_URL;
   }
 
   function render(){
+    consumeInstallCallback();
     const slot=document.getElementById(SLOT_ID);
     if(!slot) return;
     style();
-    const x=t();
+    const x=t(), ok=installed();
+
     slot.innerHTML=`
-      <div class="psgv5">
-        <div class="psgv5-head">
-          <div><div class="psgv5-title">${x.title}</div><div class="psgv5-sub">${x.sub}</div></div>
-          <div class="psgv5-badge">● ${x.badge}</div>
+      <div class="psgv6">
+        <div class="psgv6-head">
+          <div><div class="psgv6-title">${x.title}</div><div class="psgv6-sub">${x.sub}</div></div>
+          <div class="psgv6-badge">● ${x.badge}</div>
         </div>
-        <button id="psgv5Run" class="psgv5-run">${x.run}</button>
-        <div class="psgv5-note">${x.note}</div>
-        <div id="psgv5Help" class="psgv5-help"></div>
+        <button id="psgv6Button" class="psgv6-btn">${ok?x.run:x.install}</button>
+        <div class="psgv6-note">${ok?x.runNote:x.installNote}</div>
+        <div id="psgv6Help" class="psgv6-help"></div>
       </div>`;
-    slot.querySelector('#psgv5Run').onclick=run;
+
+    const btn=slot.querySelector('#psgv6Button');
+    btn.onclick=()=>{
+      if(installed()){
+        launchEditor();
+      }else{
+        downloadInstaller();
+        btn.textContent=x.downloading;
+        const h=slot.querySelector('#psgv6Help');
+        h.textContent=x.help;
+        h.classList.add('show');
+        setTimeout(()=>{ if(!installed()) btn.textContent=t().install; },5000);
+      }
+    };
   }
 
   function init(){
+    consumeInstallCallback();
     render();
     new MutationObserver(render).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});
+    window.addEventListener('pageshow',render);
+    window.addEventListener('storage',render);
     document.addEventListener('click',e=>{
       if(e.target?.matches?.('.trace-lang-btn,.langBtn,[data-lang]')) setTimeout(render,0);
     });
