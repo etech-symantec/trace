@@ -1,173 +1,130 @@
 (() => {
   const SLOT_ID = 'proxysg-launcher-slot';
-  const INSTALL_URL = './downloads/ProxySG_Trace_Launcher_Install.zip';
-  const EDITOR_URL = './downloads/ProxySG_Policy_Trace_Editor.exe';
+  const INSTALL_URL = './downloads/Install_ProxySG_Trace_Launcher.cmd';
   const PROTOCOL_URL = 'proxysg-trace://run';
 
-  function lang() {
+  function isEn() {
     return document.documentElement.lang === 'en' ||
       window.PROXYSG_UI_LANG === 'en' ||
-      localStorage.getItem('proxysgTraceLanguage') === 'en' ? 'en' : 'ko';
+      localStorage.getItem('proxysgTraceLanguage') === 'en';
   }
 
-  const text = {
+  const T = {
     ko: {
-      title: 'ProxySG Trace Editor',
-      sub: '상주 서비스 없이 필요할 때만 로컬 Editor를 실행합니다.',
-      badge: 'One-shot · 백그라운드 없음',
-      run: '▶ Trace Editor 실행',
-      install: 'Launcher 설치/복구',
-      editor: 'Editor 다운로드',
-      safety: '보안 친화 구조',
-      safetyText: 'Launcher는 네트워크 통신, localhost 포트, 자동 EXE 다운로드/실행을 사용하지 않습니다. proxysg-trace:// 호출 시 설치된 CMD Launcher가 한 번 실행된 뒤 바로 종료됩니다.',
-      fallbackTitle: 'Launcher 실행 확인',
-      fallbackText: 'Trace Editor가 실행되지 않았다면 Launcher가 설치되지 않았거나 브라우저의 외부 앱 실행이 차단된 상태일 수 있습니다. 설치 패키지를 내려받아 Install_ProxySG_Trace_Launcher.cmd를 한 번 실행하세요.',
-      auto: '설치 패키지 다운로드를 시작했습니다.',
-      retry: '설치 후 다시 실행',
-      close: '닫기',
-      installAgain: '설치 패키지 다시 받기'
+      title:'ProxySG Trace Editor',
+      sub:'상주 서비스 없이 필요할 때만 로컬 Editor를 실행합니다.',
+      badge:'One-shot · 백그라운드 없음',
+      run:'▶ Trace Editor 실행',
+      checking:'Launcher 확인 중…',
+      downloaded:'설치 파일 다운로드됨',
+      note:'Launcher가 설치되어 있으면 바로 실행합니다. 설치되어 있지 않으면 설치 파일 1개를 자동으로 내려받습니다.',
+      installHelp:'브라우저 보안상 다운로드한 파일을 웹페이지가 자동 실행할 수는 없습니다. 다운로드된 Install_ProxySG_Trace_Launcher.cmd를 한 번 실행한 뒤 같은 버튼을 다시 누르세요.'
     },
     en: {
-      title: 'ProxySG Trace Editor',
-      sub: 'Starts the local Editor only when needed, with no resident service.',
-      badge: 'One-shot · No background service',
-      run: '▶ Run Trace Editor',
-      install: 'Install/Repair Launcher',
-      editor: 'Download Editor',
-      safety: 'Security-friendly design',
-      safetyText: 'The Launcher uses no network connection, localhost port, or automatic EXE download/execution. A CMD launcher runs once for proxysg-trace:// and exits immediately.',
-      fallbackTitle: 'Check Launcher',
-      fallbackText: 'If Trace Editor did not open, the Launcher may not be installed or the browser may have blocked the external application. Download the install package and run Install_ProxySG_Trace_Launcher.cmd once.',
-      auto: 'The installation package download has started.',
-      retry: 'Run again after install',
-      close: 'Close',
-      installAgain: 'Download install package again'
+      title:'ProxySG Trace Editor',
+      sub:'Starts the local Editor only when needed, with no resident service.',
+      badge:'One-shot · No background service',
+      run:'▶ Run Trace Editor',
+      checking:'Checking Launcher…',
+      downloaded:'Installer downloaded',
+      note:'Runs immediately when the Launcher is installed. If not, one installer file is downloaded automatically.',
+      installHelp:'Browser security prevents a web page from automatically executing a downloaded file. Run the downloaded Install_ProxySG_Trace_Launcher.cmd once, then click the same button again.'
     }
   };
 
-  function t() { return text[lang()]; }
+  function t(){ return T[isEn()?'en':'ko']; }
 
-  function download(url) {
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = '';
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => a.remove(), 1000);
-  }
-
-  function ensureStyles() {
-    if (document.getElementById('psg-safe-launcher-style')) return;
-    const s = document.createElement('style');
-    s.id = 'psg-safe-launcher-style';
-    s.textContent = `
-      .psg-safe-card{border:1px solid #8fb6f2;border-radius:16px;background:linear-gradient(135deg,#eaf2ff,#f8fbff 55%,#eef4ff);padding:20px;box-shadow:0 12px 30px rgba(30,64,175,.11);font-family:Inter,"Segoe UI",Arial,sans-serif;color:#19324f}
-      .psg-safe-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.psg-safe-title{font-size:18px;font-weight:850;color:#173b70}.psg-safe-sub{font-size:12px;color:#566b84;margin-top:4px}.psg-safe-badge{white-space:nowrap;border:1px solid #8fd7bd;background:#ecfdf5;color:#087a55;border-radius:999px;padding:6px 9px;font-size:10px;font-weight:800}
-      .psg-safe-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.psg-safe-btn{border:0;border-radius:10px;padding:10px 14px;font-size:12px;font-weight:800;cursor:pointer;transition:transform .12s ease,box-shadow .15s ease,background .15s ease}.psg-safe-btn:hover{transform:translateY(-1px)}.psg-safe-btn:active{transform:translateY(1px) scale(.975);box-shadow:inset 0 2px 5px rgba(15,23,42,.18)!important}
-      .psg-safe-run{background:linear-gradient(135deg,#2563eb,#4f46e5);color:white;box-shadow:0 6px 14px rgba(37,99,235,.24)}.psg-safe-install{background:#f0edff;color:#4338ca;border:1px solid #beb9ff}.psg-safe-editor{background:white;color:#334155;border:1px solid #bdcbe0}
-      .psg-safe-note{margin-top:14px;padding:11px 12px;border:1px solid rgba(85,125,178,.22);border-radius:10px;background:rgba(255,255,255,.62);font-size:11px;line-height:1.6;color:#52657b}.psg-safe-note b{color:#234d7d}
-      .psg-safe-modal{position:fixed;inset:0;background:rgba(15,23,42,.48);display:none;align-items:center;justify-content:center;z-index:99999;padding:18px}.psg-safe-modal.show{display:flex}.psg-safe-dialog{width:min(560px,100%);background:white;border-radius:16px;border:1px solid #dbe3ee;box-shadow:0 24px 80px rgba(15,23,42,.26);padding:22px;color:#1e293b}.psg-safe-dialog h3{margin:0 0 8px;color:#173b70}.psg-safe-dialog p{font-size:12px;line-height:1.65;color:#52657b}.psg-safe-dialog .psg-safe-actions{justify-content:flex-end}
+  function ensureStyle(){
+    if(document.getElementById('psg-onebtn-style')) return;
+    const s=document.createElement('style');
+    s.id='psg-onebtn-style';
+    s.textContent=`
+      .psg-one-card{border:1px solid #8fb6f2;border-radius:16px;background:linear-gradient(135deg,#eaf2ff,#f8fbff 58%,#eef4ff);padding:20px;box-shadow:0 12px 30px rgba(30,64,175,.11);font-family:Inter,"Segoe UI",Arial,sans-serif;color:#19324f}
+      .psg-one-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+      .psg-one-title{font-size:18px;font-weight:850;color:#173b70}.psg-one-sub{font-size:12px;color:#566b84;margin-top:4px}
+      .psg-one-badge{white-space:nowrap;border:1px solid #8fd7bd;background:#ecfdf5;color:#087a55;border-radius:999px;padding:6px 9px;font-size:10px;font-weight:800}
+      .psg-one-run{margin-top:16px;border:0;border-radius:10px;padding:11px 16px;font-size:12px;font-weight:850;cursor:pointer;background:linear-gradient(135deg,#2563eb,#4f46e5);color:#fff;box-shadow:0 6px 14px rgba(37,99,235,.24);transition:.13s ease}
+      .psg-one-run:hover{transform:translateY(-1px);box-shadow:0 9px 18px rgba(37,99,235,.28)}
+      .psg-one-run:active{transform:translateY(1px) scale(.975);box-shadow:inset 0 2px 5px rgba(15,23,42,.2)}
+      .psg-one-run:disabled{opacity:.72;cursor:wait;transform:none}
+      .psg-one-note{margin-top:13px;font-size:11px;line-height:1.6;color:#52657b}
+      .psg-one-help{display:none;margin-top:12px;padding:10px 12px;border:1px solid #f2c079;border-radius:10px;background:#fff8e9;color:#7a4a12;font-size:11px;line-height:1.6}.psg-one-help.show{display:block}
     `;
     document.head.appendChild(s);
   }
 
-  function showFallback(autoDownload = false) {
-    let modal = document.getElementById('psgSafeLauncherModal');
-    if (!modal) {
-      modal = document.createElement('div');
-      modal.id = 'psgSafeLauncherModal';
-      modal.className = 'psg-safe-modal';
-      modal.innerHTML = `<div class="psg-safe-dialog">
-        <h3 id="psgSafeModalTitle"></h3>
-        <p id="psgSafeModalText"></p>
-        <p id="psgSafeModalAuto" style="display:none;font-weight:700;color:#315b8a"></p>
-        <div class="psg-safe-actions">
-          <button class="psg-safe-btn psg-safe-editor" id="psgSafeClose"></button>
-          <button class="psg-safe-btn psg-safe-install" id="psgSafeInstallAgain"></button>
-          <button class="psg-safe-btn psg-safe-run" id="psgSafeRetry"></button>
-        </div>
-      </div>`;
-      document.body.appendChild(modal);
-      modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('show'); });
-      modal.querySelector('#psgSafeClose').onclick = () => modal.classList.remove('show');
-      modal.querySelector('#psgSafeInstallAgain').onclick = () => download(INSTALL_URL);
-      modal.querySelector('#psgSafeRetry').onclick = () => { modal.classList.remove('show'); attemptRun(); };
-    }
-    const x=t();
-    modal.querySelector('#psgSafeModalTitle').textContent=x.fallbackTitle;
-    modal.querySelector('#psgSafeModalText').textContent=x.fallbackText;
-    modal.querySelector('#psgSafeClose').textContent=x.close;
-    modal.querySelector('#psgSafeInstallAgain').textContent=x.installAgain;
-    modal.querySelector('#psgSafeRetry').textContent=x.retry;
-    const auto=modal.querySelector('#psgSafeModalAuto');
-    auto.textContent=x.auto;
-    auto.style.display=autoDownload?'block':'none';
-    modal.classList.add('show');
-    if (autoDownload) download(INSTALL_URL);
+  function downloadInstaller(){
+    const a=document.createElement('a');
+    a.href=INSTALL_URL;
+    a.download='Install_ProxySG_Trace_Launcher.cmd';
+    a.style.display='none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(()=>a.remove(),1000);
   }
 
-  function attemptRun() {
-    let leftPage=false;
-    const mark=()=>{leftPage=true};
+  function attemptRun(){
+    const btn=document.getElementById('psgOneRun');
+    const help=document.getElementById('psgOneHelp');
+    const x=t();
+    if(btn){ btn.disabled=true; btn.textContent=x.checking; }
+    if(help) help.classList.remove('show');
+
+    let externalOpened=false;
+    const mark=()=>{ externalOpened=true; };
     window.addEventListener('blur',mark,{once:true});
-    document.addEventListener('visibilitychange',()=>{if(document.hidden) leftPage=true},{once:true});
-    try {
+    document.addEventListener('visibilitychange',()=>{ if(document.hidden) externalOpened=true; },{once:true});
+
+    try{
       const iframe=document.createElement('iframe');
       iframe.style.display='none';
       iframe.src=PROTOCOL_URL;
       document.body.appendChild(iframe);
-      setTimeout(()=>iframe.remove(),2500);
-    } catch (_) {}
-    setTimeout(() => {
-      if (!leftPage) showFallback(true);
-    }, 2200);
+      setTimeout(()=>iframe.remove(),2400);
+    }catch(_){}
+
+    setTimeout(()=>{
+      if(externalOpened){
+        if(btn){ btn.disabled=false; btn.textContent=x.run; }
+        return;
+      }
+      downloadInstaller();
+      if(btn){ btn.disabled=false; btn.textContent=x.downloaded; }
+      if(help){
+        help.textContent=x.installHelp;
+        help.classList.add('show');
+      }
+      setTimeout(()=>{ if(btn) btn.textContent=t().run; },4500);
+    },2200);
   }
 
-  function rewriteDirectCopy() {
-    const en = lang()==='en';
-    const direct = document.querySelector('[data-i18n="directDesc"]');
-    const run = document.querySelector('[data-i18n="runEditorDesc"]');
-    if (direct) direct.textContent = en
-      ? 'The browser does not handle SSH/HTTPS directly. A one-shot local launcher starts the Policy Trace Editor only when requested.'
-      : '브라우저가 SSH/HTTPS를 직접 처리하지 않고, 필요할 때만 일회성 로컬 Launcher가 Policy Trace Editor를 실행합니다.';
-    if (run) run.textContent = en
-      ? 'No resident process, localhost listener, or automatic EXE download is used. Install the small URL-protocol launcher once, then run the Editor from this page.'
-      : '상주 프로세스, localhost 포트, 자동 EXE 다운로드를 사용하지 않습니다. URL Protocol Launcher를 최초 1회만 설치한 뒤 이 페이지에서 Editor를 실행합니다.';
-  }
-
-  function render() {
+  function render(){
     const slot=document.getElementById(SLOT_ID);
     if(!slot) return;
-    ensureStyles();
+    ensureStyle();
     const x=t();
     slot.innerHTML=`
-      <div class="psg-safe-card">
-        <div class="psg-safe-head">
-          <div><div class="psg-safe-title">${x.title}</div><div class="psg-safe-sub">${x.sub}</div></div>
-          <div class="psg-safe-badge">● ${x.badge}</div>
+      <div class="psg-one-card">
+        <div class="psg-one-head">
+          <div><div class="psg-one-title">${x.title}</div><div class="psg-one-sub">${x.sub}</div></div>
+          <div class="psg-one-badge">● ${x.badge}</div>
         </div>
-        <div class="psg-safe-actions">
-          <button class="psg-safe-btn psg-safe-run" id="psgSafeRun">${x.run}</button>
-          <button class="psg-safe-btn psg-safe-install" id="psgSafeInstall">${x.install}</button>
-          <button class="psg-safe-btn psg-safe-editor" id="psgSafeEditor">${x.editor}</button>
-        </div>
-        <div class="psg-safe-note"><b>🔐 ${x.safety}</b><br>${x.safetyText}</div>
+        <button class="psg-one-run" id="psgOneRun">${x.run}</button>
+        <div class="psg-one-note">${x.note}</div>
+        <div class="psg-one-help" id="psgOneHelp"></div>
       </div>`;
-    slot.querySelector('#psgSafeRun').onclick=attemptRun;
-    slot.querySelector('#psgSafeInstall').onclick=()=>showFallback(true);
-    slot.querySelector('#psgSafeEditor').onclick=()=>download(EDITOR_URL);
-    rewriteDirectCopy();
+    slot.querySelector('#psgOneRun').onclick=attemptRun;
   }
 
-  function init() {
+  function init(){
     render();
-    const mo=new MutationObserver(()=>{ rewriteDirectCopy(); });
+    const mo=new MutationObserver(()=>render());
     mo.observe(document.documentElement,{attributes:true,attributeFilter:['lang']});
-    window.addEventListener('storage',render);
-    document.addEventListener('click', e => {
+    document.addEventListener('click',e=>{
       if(e.target?.matches?.('.trace-lang-btn,.langBtn,[data-lang]')) setTimeout(render,0);
     });
   }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init,{once:true}); else init();
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init,{once:true});
+  else init();
 })();
