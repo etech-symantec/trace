@@ -428,7 +428,7 @@
 <!-- 공통 헤더 + 제목 + 버전 -->
 <script>
   window.pageTitle = "ProxySG Trace 도구";
-  window.pageVersion = "ver.2026.09.29.01";
+  window.pageVersion = "ver.2026.09.29.02";
 </script> 
 <script src="https://etech-symantec.github.io/header.js"></script>
 
@@ -1364,7 +1364,7 @@ document.addEventListener("click", (e) => {
 <script>
 (() => {
   const SLOT_ID='proxysg-launcher-slot';
-  const INSTALL_URL='./downloads/Install_ProxySG_Trace_Launcher_v5.cmd';
+  const INSTALL_URL='./downloads/Install_ProxySG_Trace_Launcher_v5.cmd?v=20260929-2';
   const PROTOCOL_URL='proxysg-trace-v5://run';
 
   function en(){
@@ -1433,11 +1433,15 @@ document.addEventListener("click", (e) => {
     window.addEventListener('blur',mark,{once:true});
     document.addEventListener('visibilitychange',()=>{if(document.hidden)opened=true},{once:true});
 
-    const f=document.createElement('iframe');
-    f.style.display='none';
-    f.src=PROTOCOL_URL;
-    document.body.appendChild(f);
-    setTimeout(()=>f.remove(),2500);
+    // 사용자 클릭 이벤트 안에서 외부 URL Protocol을 직접 호출합니다.
+    // hidden iframe은 Chrome/Edge에서 ERR_UNKNOWN_URL_SCHEME로 처리되는 경우가 있어 사용하지 않습니다.
+    const a=document.createElement('a');
+    a.href=PROTOCOL_URL;
+    a.style.display='none';
+    a.setAttribute('aria-hidden','true');
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(()=>a.remove(),800);
 
     setTimeout(()=>{
       if(opened){
