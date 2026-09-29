@@ -11,6 +11,8 @@ set "ZIPTMP=%APPDIR%\ProxySG_Policy_Trace_Editor.zip.download"
 set "ZIPFILE=%APPDIR%\ProxySG_Policy_Trace_Editor.zip"
 set "HASHFILE=%APPDIR%\ProxySG_Policy_Trace_Editor.zip.sha256"
 set "EXTRACTDIR=%TEMP%\ProxySGTraceEditor_v6_%RANDOM%%RANDOM%"
+set "LOGFILE=%TEMP%\ProxySG_Trace_Launcher_v6_install.log"
+> "%LOGFILE%" echo [%date% %time%] Installation started
 
 echo.
 echo ============================================================
@@ -26,20 +28,18 @@ echo.
 echo It does NOT install a service, startup item, localhost listener,
 echo or resident background process.
 echo.
-echo Press any key to continue.
-pause >nul
 
 where curl.exe >nul 2>&1
 if errorlevel 1 (
   echo [ERROR] Windows curl.exe was not found.
-  pause
+
   exit /b 1
 )
 
 where tar.exe >nul 2>&1
 if errorlevel 1 (
   echo [ERROR] Windows tar.exe was not found.
-  pause
+
   exit /b 1
 )
 
@@ -90,12 +90,14 @@ if not "%RC%"=="0" goto :fail
 
 echo.
 echo [1/5] Downloading Editor ZIP...
+>> "%LOGFILE%" echo [%date% %time%] Downloading Editor ZIP
 curl.exe -fL --retry 2 --connect-timeout 15 ^
   "%BASEURL%/ProxySG_Policy_Trace_Editor.zip" ^
   -o "%ZIPTMP%"
 if errorlevel 1 goto :download_fail
 
 echo [2/5] Downloading Editor ZIP SHA-256...
+>> "%LOGFILE%" echo [%date% %time%] Downloading SHA-256
 curl.exe -fL --retry 2 --connect-timeout 15 ^
   "%BASEURL%/ProxySG_Policy_Trace_Editor.zip.sha256" ^
   -o "%HASHFILE%"
@@ -134,10 +136,12 @@ if /I not "%EXPECTED%"=="%ACTUAL%" (
 )
 
 echo [3/5] SHA-256 verified.
+>> "%LOGFILE%" echo [%date% %time%] SHA-256 verified
 move /y "%ZIPTMP%" "%ZIPFILE%" >nul
 if errorlevel 1 goto :fail_cleanup
 
 echo [4/5] Extracting Editor ZIP...
+>> "%LOGFILE%" echo [%date% %time%] Extracting Editor ZIP
 if exist "%EXTRACTDIR%" rmdir /s /q "%EXTRACTDIR%" >nul 2>&1
 mkdir "%EXTRACTDIR%" >nul 2>&1
 tar.exe -xf "%ZIPFILE%" -C "%EXTRACTDIR%"
@@ -154,6 +158,7 @@ if not defined FOUND_EDITOR (
 )
 
 echo [5/5] Installing Editor...
+>> "%LOGFILE%" echo [%date% %time%] Installing Editor
 copy /y "%FOUND_EDITOR%" "%EDITOR%" >nul
 if errorlevel 1 goto :fail_cleanup
 
@@ -162,6 +167,7 @@ if exist "%EXTRACTDIR%" rmdir /s /q "%EXTRACTDIR%" >nul 2>&1
 echo.
 echo ============================================================
 echo [OK] Installation completed successfully.
+>> "%LOGFILE%" echo [%date% %time%] Installation completed successfully
 echo ============================================================
 echo.
 echo Installed Editor:
@@ -170,11 +176,12 @@ echo.
 echo Opening the Trace page to confirm the v6 installation...
 start "" "https://etech-symantec.github.io/trace/?mode=direct&launcher=v6-installed"
 echo.
-echo You may close this window.
-timeout /t 3 >nul
+echo Installation completed. This window will close automatically.
+timeout /t 2 /nobreak >nul
 exit /b 0
 
 :download_fail
+>> "%LOGFILE%" echo [%date% %time%] ERROR: download failed
 echo.
 echo [ERROR] Could not download ProxySG_Policy_Trace_Editor.zip
 echo from:
@@ -182,15 +189,17 @@ echo   %BASEURL%
 goto :fail_cleanup
 
 :fail_cleanup
+>> "%LOGFILE%" echo [%date% %time%] ERROR: install failed
 if exist "%ZIPTMP%" del /q "%ZIPTMP%" >nul 2>&1
 if exist "%EXTRACTDIR%" rmdir /s /q "%EXTRACTDIR%" >nul 2>&1
 echo.
-pause
+
 exit /b 1
 
 :fail
+>> "%LOGFILE%" echo [%date% %time%] ERROR: launcher installation failed
 echo.
 echo [ERROR] Launcher v6 installation failed.
 echo.
-pause
+
 exit /b 1
