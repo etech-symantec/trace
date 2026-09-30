@@ -1,7 +1,6 @@
-﻿@echo off
+@echo off
 setlocal EnableExtensions DisableDelayedExpansion
-chcp 65001 >nul
-title ProxySG Trace Launcher v6 - Install / Repair
+title ProxySG Trace Launcher v6.1 - Install / Repair
 
 set "BASEURL=https://etech-symantec.github.io/trace/downloads"
 set "APPDIR=%LOCALAPPDATA%\Etech\ProxySGTrace"
@@ -12,42 +11,20 @@ set "ZIPFILE=%APPDIR%\ProxySG_Policy_Trace_Editor.zip"
 set "HASHFILE=%APPDIR%\ProxySG_Policy_Trace_Editor.zip.sha256"
 set "EXTRACTDIR=%TEMP%\ProxySGTraceEditor_v6_%RANDOM%%RANDOM%"
 set "LOGFILE=%TEMP%\ProxySG_Trace_Launcher_v6_install.log"
-> "%LOGFILE%" echo [%date% %time%] Installation started
 
-echo.
-echo ============================================================
-echo   ProxySG Trace Launcher v6 - Install / Repair
-echo ============================================================
-echo.
-echo This user-initiated installer will:
-echo   1. Register proxysg-trace-v6:// for the current Windows user
-echo   2. Download the Policy Trace Editor ZIP
-echo   3. Download and verify the published ZIP SHA-256
-echo   4. Extract and install the Editor under LocalAppData
-echo.
-echo It does NOT install a service, startup item, localhost listener,
-echo or resident background process.
-echo.
+> "%LOGFILE%" echo [%date% %time%] Install started
 
 where curl.exe >nul 2>&1
-if errorlevel 1 (
-  echo [ERROR] Windows curl.exe was not found.
-
-  exit /b 1
-)
+if errorlevel 1 goto :no_curl
 
 where tar.exe >nul 2>&1
-if errorlevel 1 (
-  echo [ERROR] Windows tar.exe was not found.
-
-  exit /b 1
-)
+if errorlevel 1 goto :no_tar
 
 if not exist "%APPDIR%" mkdir "%APPDIR%" >nul 2>&1
 if errorlevel 1 goto :fail
 
 rem ------------------------------------------------------------
-rem Create the one-shot launcher.
+rem Create one-shot launcher.
 rem ------------------------------------------------------------
 > "%LAUNCHER%" echo @echo off
 >>"%LAUNCHER%" echo setlocal EnableExtensions DisableDelayedExpansion
@@ -61,7 +38,7 @@ rem ------------------------------------------------------------
 if not exist "%LAUNCHER%" goto :fail
 
 rem ------------------------------------------------------------
-rem Register v6 and refresh the legacy protocol aliases.
+rem Register v6 protocol.
 rem ------------------------------------------------------------
 set "REGFILE=%TEMP%\proxysg_trace_v6_%RANDOM%.reg"
 set "COMSPEC_ESC=%ComSpec:\=\\%"
@@ -88,25 +65,15 @@ set "RC=%ERRORLEVEL%"
 del /q "%REGFILE%" >nul 2>&1
 if not "%RC%"=="0" goto :fail
 
-echo.
-echo [1/5] Downloading Editor ZIP...
+echo [1/6] Downloading Editor ZIP...
 >> "%LOGFILE%" echo [%date% %time%] Downloading Editor ZIP
-curl.exe -fL --retry 2 --connect-timeout 15 ^
-  "%BASEURL%/ProxySG_Policy_Trace_Editor.zip" ^
-  -o "%ZIPTMP%"
+curl.exe -fL --retry 2 --connect-timeout 15 "%BASEURL%/ProxySG_Policy_Trace_Editor.zip" -o "%ZIPTMP%"
 if errorlevel 1 goto :download_fail
 
-echo [2/5] Downloading Editor ZIP SHA-256...
->> "%LOGFILE%" echo [%date% %time%] Downloading SHA-256
-curl.exe -fL --retry 2 --connect-timeout 15 ^
-  "%BASEURL%/ProxySG_Policy_Trace_Editor.zip.sha256" ^
-  -o "%HASHFILE%"
-if errorlevel 1 (
-  echo.
-  echo [ERROR] ProxySG_Policy_Trace_Editor.zip.sha256 is missing or cannot be downloaded.
-  echo Upload that file to the GitHub downloads folder.
-  goto :fail_cleanup
-)
+echo [2/6] Downloading ZIP SHA-256...
+>> "%LOGFILE%" echo [%date% %time%] Downloading ZIP SHA-256
+curl.exe -fL --retry 2 --connect-timeout 15 "%BASEURL%/ProxySG_Policy_Trace_Editor.zip.sha256" -o "%HASHFILE%"
+if errorlevel 1 goto :hash_download_fail
 
 for /f "tokens=1" %%H in (%HASHFILE%) do (
   set "EXPECTED=%%H"
@@ -114,36 +81,25 @@ for /f "tokens=1" %%H in (%HASHFILE%) do (
 )
 
 :have_expected
-if not defined EXPECTED (
-  echo [ERROR] The published SHA-256 file is empty or invalid.
-  goto :fail_cleanup
-)
+if not defined EXPECTED goto :hash_invalid
 
 set "ACTUAL="
 for /f "tokens=* delims= " %%H in ('certutil -hashfile "%ZIPTMP%" SHA256 ^| findstr /R /I "^[0-9A-F][0-9A-F]*$"') do set "ACTUAL=%%H"
+if not defined ACTUAL goto :hash_calc_fail
 
-if not defined ACTUAL (
-  echo [ERROR] Could not calculate the ZIP SHA-256.
-  goto :fail_cleanup
-)
+if /I not "%EXPECTED%"=="%ACTUAL%" goto :hash_mismatch
 
-if /I not "%EXPECTED%"=="%ACTUAL%" (
-  echo.
-  echo [ERROR] ZIP SHA-256 verification FAILED.
-  echo Expected: %EXPECTED%
-  echo Actual:   %ACTUAL%
-  goto :fail_cleanup
-)
-
-echo [3/5] SHA-256 verified.
->> "%LOGFILE%" echo [%date% %time%] SHA-256 verified
+echo [3/6] SHA-256 verified.
+>> "%LOGFILE%" echo [%date% %time%] ZIP SHA-256 verified
 move /y "%ZIPTMP%" "%ZIPFILE%" >nul
 if errorlevel 1 goto :fail_cleanup
 
-echo [4/5] Extracting Editor ZIP...
+echo [4/6] Extracting Editor ZIP...
 >> "%LOGFILE%" echo [%date% %time%] Extracting Editor ZIP
 if exist "%EXTRACTDIR%" rmdir /s /q "%EXTRACTDIR%" >nul 2>&1
 mkdir "%EXTRACTDIR%" >nul 2>&1
+if errorlevel 1 goto :fail_cleanup
+
 tar.exe -xf "%ZIPFILE%" -C "%EXTRACTDIR%"
 if errorlevel 1 goto :fail_cleanup
 
@@ -151,55 +107,112 @@ set "FOUND_EDITOR="
 for /r "%EXTRACTDIR%" %%F in (ProxySG_Policy_Trace_Editor*.exe) do (
   if not defined FOUND_EDITOR set "FOUND_EDITOR=%%F"
 )
+if not defined FOUND_EDITOR goto :editor_not_found
 
-if not defined FOUND_EDITOR (
-  echo [ERROR] No ProxySG_Policy_Trace_Editor*.exe was found inside the ZIP.
-  goto :fail_cleanup
+echo [5/6] Closing running Editor if needed...
+>> "%LOGFILE%" echo [%date% %time%] Closing running Editor before update
+
+rem Stop only ProxySG Policy Trace Editor processes.
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command ^
+  "$target=[IO.Path]::GetFullPath($env:LOCALAPPDATA+'\Etech\ProxySGTrace\ProxySG_Policy_Trace_Editor.exe');" ^
+  "Get-Process -ErrorAction SilentlyContinue | Where-Object { try { ($_.ProcessName -like 'ProxySG_Policy_Trace_Editor*') -or ($_.Path -and [IO.Path]::GetFullPath($_.Path) -eq $target) } catch { $false } } | Stop-Process -Force -ErrorAction SilentlyContinue" >nul 2>&1
+
+rem Wait briefly for Windows to release the executable file handle.
+for /L %%N in (1,1,10) do (
+  if not exist "%EDITOR%" goto :editor_unlocked
+  2>nul (>>"%EDITOR%" echo.) && (
+    rem Remove the test byte immediately by restoring from a temporary copy is undesirable.
+    rem We only reach this branch if append succeeded; use copy stage directly after short delay.
+    goto :editor_unlocked
+  )
+  ping 127.0.0.1 -n 2 >nul
 )
 
-echo [5/5] Installing Editor...
+:editor_unlocked
+echo [6/6] Installing Editor...
 >> "%LOGFILE%" echo [%date% %time%] Installing Editor
-copy /y "%FOUND_EDITOR%" "%EDITOR%" >nul
-if errorlevel 1 goto :fail_cleanup
+
+rem Copy to a temporary file first, then atomically replace the target.
+copy /y "%FOUND_EDITOR%" "%APPDIR%\ProxySG_Policy_Trace_Editor.exe.new" >nul
+if errorlevel 1 goto :copy_stage_fail
+
+rem Ensure old target is removed after process termination.
+if exist "%EDITOR%" (
+  del /f /q "%EDITOR%" >nul 2>&1
+)
+
+move /y "%APPDIR%\ProxySG_Policy_Trace_Editor.exe.new" "%EDITOR%" >nul 2>&1
+if errorlevel 1 goto :replace_fail
 
 if exist "%EXTRACTDIR%" rmdir /s /q "%EXTRACTDIR%" >nul 2>&1
 
-echo.
-echo ============================================================
-echo [OK] Installation completed successfully.
 >> "%LOGFILE%" echo [%date% %time%] Installation completed successfully
-echo ============================================================
-echo.
-echo Installed Editor:
-echo   %EDITOR%
-echo.
-echo Opening the Trace page to confirm the v6 installation...
+echo [OK] Installation completed successfully.
+
+rem Open callback page so the web UI changes from Install to Run.
 start "" "https://etech-symantec.github.io/trace/?mode=direct&launcher=v6-installed"
-echo.
-echo Installation completed. This window will close automatically.
+
 timeout /t 2 /nobreak >nul
 exit /b 0
 
+:no_curl
+>> "%LOGFILE%" echo [%date% %time%] ERROR curl.exe not found
+echo [ERROR] curl.exe not found.
+exit /b 10
+
+:no_tar
+>> "%LOGFILE%" echo [%date% %time%] ERROR tar.exe not found
+echo [ERROR] tar.exe not found.
+exit /b 11
+
 :download_fail
->> "%LOGFILE%" echo [%date% %time%] ERROR: download failed
-echo.
-echo [ERROR] Could not download ProxySG_Policy_Trace_Editor.zip
-echo from:
-echo   %BASEURL%
+>> "%LOGFILE%" echo [%date% %time%] ERROR Editor ZIP download failed
+echo [ERROR] Editor ZIP download failed.
+goto :fail_cleanup
+
+:hash_download_fail
+>> "%LOGFILE%" echo [%date% %time%] ERROR SHA-256 download failed
+echo [ERROR] ZIP SHA-256 download failed.
+goto :fail_cleanup
+
+:hash_invalid
+>> "%LOGFILE%" echo [%date% %time%] ERROR SHA-256 file invalid
+echo [ERROR] ZIP SHA-256 file is invalid.
+goto :fail_cleanup
+
+:hash_calc_fail
+>> "%LOGFILE%" echo [%date% %time%] ERROR SHA-256 calculation failed
+echo [ERROR] ZIP SHA-256 calculation failed.
+goto :fail_cleanup
+
+:hash_mismatch
+>> "%LOGFILE%" echo [%date% %time%] ERROR SHA-256 mismatch
+echo [ERROR] ZIP SHA-256 mismatch.
+goto :fail_cleanup
+
+:editor_not_found
+>> "%LOGFILE%" echo [%date% %time%] ERROR Editor EXE not found in ZIP
+echo [ERROR] Editor EXE was not found inside the ZIP.
+goto :fail_cleanup
+
+:copy_stage_fail
+>> "%LOGFILE%" echo [%date% %time%] ERROR staging copy failed
+echo [ERROR] Could not stage the new Editor file.
+goto :fail_cleanup
+
+:replace_fail
+>> "%LOGFILE%" echo [%date% %time%] ERROR target replace failed; file may still be locked
+echo [ERROR] Could not replace the installed Editor.
+echo [ERROR] The old Editor may still be running or locked by another process.
 goto :fail_cleanup
 
 :fail_cleanup
->> "%LOGFILE%" echo [%date% %time%] ERROR: install failed
 if exist "%ZIPTMP%" del /q "%ZIPTMP%" >nul 2>&1
+if exist "%APPDIR%\ProxySG_Policy_Trace_Editor.exe.new" del /q "%APPDIR%\ProxySG_Policy_Trace_Editor.exe.new" >nul 2>&1
 if exist "%EXTRACTDIR%" rmdir /s /q "%EXTRACTDIR%" >nul 2>&1
-echo.
-
 exit /b 1
 
 :fail
->> "%LOGFILE%" echo [%date% %time%] ERROR: launcher installation failed
-echo.
-echo [ERROR] Launcher v6 installation failed.
-echo.
-
+>> "%LOGFILE%" echo [%date% %time%] ERROR launcher installation failed
+echo [ERROR] Launcher installation failed.
 exit /b 1
