@@ -421,11 +421,6 @@
     body[data-trace-mode="direct"] #directAnalysisPanel{border-radius:14px !important}
   }
 
-
-  /* v12: 언어 전환 안정화 */
-  html[data-lang-switching="1"] body { cursor: progress; }
-  .trace-language-switch { contain: layout style; }
-
 </style>
 </head>
 <body>
@@ -433,7 +428,7 @@
 <!-- 공통 헤더 + 제목 + 버전 -->
 <script>
   window.pageTitle = "ProxySG Trace 도구";
-  window.pageVersion = "ver.2026.09.30.01";
+  window.pageVersion = "ver.2026.09.30.02";
 </script> 
 <script src="https://etech-symantec.github.io/header.js"></script>
 
@@ -528,26 +523,20 @@
     nodes.forEach(n=>{
       const raw=n.nodeValue || ''; const lead=(raw.match(/^\s*/)||[''])[0], trail=(raw.match(/\s*$/)||[''])[0];
       const core=raw.trim(); if(!core) return;
-      let next=null;
-      if(map[core]) next=lead+map[core]+trail;
+      if(map[core]) n.nodeValue=lead+map[core]+trail;
       else if(lang==='en'){
-        const m=core.match(/^최신 Editor v(.+)$/);
-        if(m) next=lead+'Latest Editor v'+m[1]+trail;
+        let m=core.match(/^최신 Editor v(.+)$/); if(m) n.nodeValue=lead+'Latest Editor v'+m[1]+trail;
       } else {
-        const m=core.match(/^Latest Editor v(.+)$/);
-        if(m) next=lead+'최신 Editor v'+m[1]+trail;
+        let m=core.match(/^Latest Editor v(.+)$/); if(m) n.nodeValue=lead+'최신 Editor v'+m[1]+trail;
       }
-      if(next!==null && next!==raw) n.nodeValue=next;
     });
     root.querySelectorAll?.('[aria-label="닫기"]').forEach(el=>{ if(lang==='en') el.setAttribute('aria-label','Close'); });
     root.querySelectorAll?.('[aria-label="Close"]').forEach(el=>{ if(lang==='ko') el.setAttribute('aria-label','닫기'); });
   }
 
   function applyLanguage(lang, rerun=false){
-    document.documentElement.dataset.langSwitching='1';
     lang = lang === 'en' ? 'en' : 'ko';
     window.PROXYSG_LANG=lang;
-    window.PROXYSG_UI_LANG=lang;
     localStorage.setItem('proxysgTraceLanguage',lang);
     document.documentElement.lang=lang;
     const d=dict[lang];
@@ -561,18 +550,9 @@
     if(result && (!window.sessions || !window.sessions.length) && !document.getElementById('inputText')?.value.trim()) result.textContent=d.initialResult;
     document.querySelectorAll('.trace-lang-btn').forEach(btn=>btn.classList.toggle('active',btn.dataset.lang===lang));
     const ref=document.getElementById('refBtn'); if(ref) ref.textContent=d.timingRef;
-
-    // 전체 document.body를 TreeWalker로 매번 훑지 않습니다.
-    // 동적/외부 영역만 제한적으로 번역해 언어 전환 시 UI 프리즈를 방지합니다.
-    const launcherRoot=document.getElementById('proxysg-launcher-slot');
-    if(launcherRoot) translateLooseText(launcherRoot);
-
+    translateLooseText(document.body);
     window.dispatchEvent(new CustomEvent('proxysg-language-change',{detail:{lang}}));
-    requestAnimationFrame(()=>{ delete document.documentElement.dataset.langSwitching; });
-
-    // 언어 변경만으로 대용량 Trace를 자동 재분석하지 않음.
-    // 사용자가 분석 버튼을 다시 누르면 새 언어 라벨로 렌더링됩니다.
-
+    if(rerun && document.getElementById('inputText')?.value.trim()) setTimeout(()=>document.getElementById('analyzeBtn')?.click(),0);
   }
 
   function initLanguageUI(){
@@ -580,31 +560,19 @@
     document.querySelectorAll('.trace-lang-btn').forEach(btn=>{
       if(btn.dataset.langBound==='1') return;
       btn.dataset.langBound='1';
-      btn.addEventListener('click',()=>applyLanguage(btn.dataset.lang,false));
+      btn.addEventListener('click',()=>applyLanguage(btn.dataset.lang,true));
     });
     applyLanguage(initial,false);
 
-    let translateQueued=false;
-    const pendingRoots=new Set();
     const mo=new MutationObserver(muts=>{
       for(const m of muts){
         m.addedNodes.forEach(n=>{
-          if(n.nodeType===1) pendingRoots.add(n);
-          else if(n.nodeType===3 && n.parentElement) pendingRoots.add(n.parentElement);
+          if(n.nodeType===1) translateLooseText(n);
+          else if(n.nodeType===3 && n.parentElement) translateLooseText(n.parentElement);
         });
       }
-      if(translateQueued || pendingRoots.size===0) return;
-      translateQueued=true;
-      requestAnimationFrame(()=>{
-        translateQueued=false;
-        const roots=[...pendingRoots];
-        pendingRoots.clear();
-        roots.forEach(root=>translateLooseText(root));
-      });
     });
-    // characterData 감시는 의도적으로 사용하지 않습니다.
-    // 번역 과정에서 텍스트를 바꾸면 다시 observer가 발화해 반복 렌더링/멈춤이 발생할 수 있습니다.
-    mo.observe(document.body,{childList:true,subtree:true});
+    mo.observe(document.body,{childList:true,subtree:true,characterData:true});
     window.__proxysgLanguageObserver=mo;
   }
 
@@ -1399,6 +1367,7 @@ document.addEventListener("click", (e) => {
   const INSTALL_URL='./downloads/Install_ProxySG_Trace_Launcher_v6.cmd?v=20260929-1';
   const PROTOCOL_URL='proxysg-trace-v6://run';
   const STORAGE_KEY='proxysgTraceLauncherInstalledVersion';
+  const DOWNLOAD_NOTICE_KEY='proxysgTraceV6InstallerDownloaded';
   const VERSION='6';
 
   function isEn(){
@@ -1414,10 +1383,17 @@ document.addEventListener("click", (e) => {
       badge:'v6 · ZIP 배포',
       install:'↓ Trace Editor 설치',
       run:'▶ Trace Editor 실행',
-      downloading:'설치 파일 다운로드됨',
-      installNote:'현재 브라우저에는 v6 설치 완료 기록이 없습니다. 버튼을 누르면 설치 CMD를 바로 다운로드합니다.',
+      downloading:'⚠ 다운로드 완료 · 설치 파일을 1회 실행하세요',
+      installNote:'처음 사용하는 PC에서는 설치 파일을 다운로드한 뒤 반드시 한 번 직접 실행해야 합니다.',
       runNote:'v6 설치가 확인되었습니다. 버튼을 누르면 Windows URL Protocol로 로컬 Editor를 실행합니다.',
-      help:'다운로드된 Install_ProxySG_Trace_Launcher_v6.cmd를 한 번 실행하세요. 설치가 완료되면 이 페이지가 자동으로 다시 열리고 버튼이 “Trace Editor 실행”으로 바뀝니다.'
+      helpTitle:'중요 · 다운로드만으로는 설치되지 않습니다',
+      helpLead:'지금 다운로드된 설치 파일을 반드시 한 번 실행해야 합니다.',
+      helpFile:'Install_ProxySG_Trace_Launcher_v6.cmd',
+      helpStep1:'브라우저 우측 상단의 다운로드 아이콘을 누르거나 Ctrl + J를 엽니다.',
+      helpStep2:'다운로드된 Install_ProxySG_Trace_Launcher_v6.cmd를 클릭하여 실행합니다.',
+      helpStep3:'설치가 끝나면 이 페이지가 자동으로 다시 열리고 버튼이 “Trace Editor 실행”으로 바뀝니다.',
+      helpTip:'최초 설치 때만 필요한 작업입니다. 다음부터는 이 버튼 하나로 Editor가 바로 실행됩니다.',
+      helpBadge:'최초 1회 실행 필수'
     },
     en:{
       title:'ProxySG Trace Editor',
@@ -1425,10 +1401,17 @@ document.addEventListener("click", (e) => {
       badge:'v6 · ZIP distribution',
       install:'↓ Install Trace Editor',
       run:'▶ Run Trace Editor',
-      downloading:'Installer downloaded',
-      installNote:'This browser has no v6 installation record yet. Clicking the button downloads the installer CMD directly.',
+      downloading:'⚠ Download complete · Run the installer once',
+      installNote:'On a new PC, you must run the downloaded installer once after the download completes.',
       runNote:'v6 installation is confirmed. Click the button to start the local Editor via the Windows URL protocol.',
-      help:'Run the downloaded Install_ProxySG_Trace_Launcher_v6.cmd once. When installation completes, this page opens again automatically and the button changes to “Run Trace Editor”.'
+      helpTitle:'Important · Downloading alone does not install it',
+      helpLead:'You must run the downloaded installer file once.',
+      helpFile:'Install_ProxySG_Trace_Launcher_v6.cmd',
+      helpStep1:'Open the browser Downloads button at the top-right, or press Ctrl + J.',
+      helpStep2:'Click the downloaded Install_ProxySG_Trace_Launcher_v6.cmd file to run it.',
+      helpStep3:'When installation finishes, this page reopens automatically and the button changes to “Run Trace Editor”.',
+      helpTip:'This is required only once. After that, this single button starts the Editor directly.',
+      helpBadge:'ONE-TIME RUN REQUIRED'
     }
   };
 
@@ -1438,6 +1421,7 @@ document.addEventListener("click", (e) => {
     const u=new URL(location.href);
     if(u.searchParams.get('launcher')==='v6-installed'){
       localStorage.setItem(STORAGE_KEY,VERSION);
+      sessionStorage.removeItem(DOWNLOAD_NOTICE_KEY);
       u.searchParams.delete('launcher');
       history.replaceState(null,'',u);
     }
@@ -1445,6 +1429,10 @@ document.addEventListener("click", (e) => {
 
   function installed(){
     return localStorage.getItem(STORAGE_KEY)===VERSION;
+  }
+
+  function installerDownloaded(){
+    return sessionStorage.getItem(DOWNLOAD_NOTICE_KEY)==='1' && !installed();
   }
 
   function style(){
@@ -1461,8 +1449,21 @@ document.addEventListener("click", (e) => {
       .psgv6-btn:hover{transform:translateY(-1px);box-shadow:0 9px 18px rgba(37,99,235,.28)}
       .psgv6-btn:active{transform:translateY(1px) scale(.975);box-shadow:inset 0 2px 5px rgba(15,23,42,.2)}
       .psgv6-note{margin-top:13px;font-size:11px;line-height:1.6;color:#52657b}
-      .psgv6-help{display:none;margin-top:12px;padding:10px 12px;border:1px solid #f2c079;border-radius:10px;background:#fff8e9;color:#7a4a12;font-size:11px;line-height:1.6}
-      .psgv6-help.show{display:block}
+      .psgv6-help{display:none;margin-top:16px;border:2px solid #f59e0b;border-radius:16px;background:linear-gradient(135deg,#fff8e1 0%,#fffdf7 55%,#fff3d2 100%);color:#5d3905;box-shadow:0 12px 28px rgba(217,119,6,.16);overflow:hidden}
+      .psgv6-help.show{display:block;animation:psgv6NoticeIn .22s ease-out}
+      .psgv6-helpHead{display:flex;align-items:center;gap:12px;padding:15px 17px;background:linear-gradient(90deg,#fff0b8,#fff7df);border-bottom:1px solid #f3c56d}
+      .psgv6-helpIcon{width:40px;height:40px;display:grid;place-items:center;border-radius:12px;background:#f59e0b;color:#fff;font-size:23px;box-shadow:0 6px 14px rgba(217,119,6,.22);flex:0 0 auto}
+      .psgv6-helpTitle{font-size:18px;font-weight:900;letter-spacing:-.35px;color:#7a4300;line-height:1.25}
+      .psgv6-helpLead{font-size:12px;font-weight:750;color:#9a5b08;margin-top:3px}
+      .psgv6-helpBadge{margin-left:auto;white-space:nowrap;border-radius:999px;background:#c2410c;color:#fff;padding:6px 10px;font-size:10px;font-weight:900;letter-spacing:.1px}
+      .psgv6-helpBody{padding:16px 17px 17px}
+      .psgv6-file{display:flex;align-items:center;gap:9px;border:1px solid #e6b85b;background:#fff;border-radius:10px;padding:10px 12px;font:800 12px/1.3 Consolas,'Cascadia Code',monospace;color:#6d4305;box-shadow:inset 0 1px 0 rgba(255,255,255,.8)}
+      .psgv6-steps{display:grid;gap:8px;margin-top:12px}
+      .psgv6-step{display:grid;grid-template-columns:28px minmax(0,1fr);gap:9px;align-items:start;padding:9px 10px;border-radius:10px;background:rgba(255,255,255,.66);border:1px solid rgba(224,163,57,.34);font-size:11.5px;line-height:1.55}
+      .psgv6-stepNo{width:25px;height:25px;border-radius:8px;display:grid;place-items:center;background:#d97706;color:#fff;font-size:11px;font-weight:900}
+      .psgv6-tip{margin-top:12px;padding:9px 11px;border-left:4px solid #2563eb;border-radius:8px;background:#eef5ff;color:#31547c;font-size:10.5px;font-weight:700;line-height:1.55}
+      .psgv6-btn.downloaded{background:linear-gradient(135deg,#d97706,#ea580c);box-shadow:0 7px 17px rgba(217,119,6,.28);font-size:12.5px}
+      @keyframes psgv6NoticeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
     `;
     document.head.appendChild(s);
   }
@@ -1488,7 +1489,7 @@ document.addEventListener("click", (e) => {
     const slot=document.getElementById(SLOT_ID);
     if(!slot) return;
     style();
-    const x=t(), ok=installed();
+    const x=t(), ok=installed(), downloaded=installerDownloaded();
 
     slot.innerHTML=`
       <div class="psgv6">
@@ -1496,22 +1497,48 @@ document.addEventListener("click", (e) => {
           <div><div class="psgv6-title">${x.title}</div><div class="psgv6-sub">${x.sub}</div></div>
           <div class="psgv6-badge">● ${x.badge}</div>
         </div>
-        <button id="psgv6Button" class="psgv6-btn">${ok?x.run:x.install}</button>
+        <button id="psgv6Button" class="psgv6-btn${downloaded?' downloaded':''}">${ok?x.run:(downloaded?x.downloading:x.install)}</button>
         <div class="psgv6-note">${ok?x.runNote:x.installNote}</div>
-        <div id="psgv6Help" class="psgv6-help"></div>
+        <div id="psgv6Help" class="psgv6-help">
+          <div class="psgv6-helpHead">
+            <div class="psgv6-helpIcon">!</div>
+            <div>
+              <div class="psgv6-helpTitle">${x.helpTitle}</div>
+              <div class="psgv6-helpLead">${x.helpLead}</div>
+            </div>
+            <div class="psgv6-helpBadge">${x.helpBadge}</div>
+          </div>
+          <div class="psgv6-helpBody">
+            <div class="psgv6-file">📄 ${x.helpFile}</div>
+            <div class="psgv6-steps">
+              <div class="psgv6-step"><div class="psgv6-stepNo">1</div><div>${x.helpStep1}</div></div>
+              <div class="psgv6-step"><div class="psgv6-stepNo">2</div><div>${x.helpStep2}</div></div>
+              <div class="psgv6-step"><div class="psgv6-stepNo">3</div><div>${x.helpStep3}</div></div>
+            </div>
+            <div class="psgv6-tip">✓ ${x.helpTip}</div>
+          </div>
+        </div>
       </div>`;
 
     const btn=slot.querySelector('#psgv6Button');
+    if(downloaded) slot.querySelector('#psgv6Help')?.classList.add('show');
     btn.onclick=()=>{
       if(installed()){
         launchEditor();
       }else{
         downloadInstaller();
+        sessionStorage.setItem(DOWNLOAD_NOTICE_KEY,'1');
         btn.textContent=x.downloading;
+        btn.classList.add('downloaded');
         const h=slot.querySelector('#psgv6Help');
-        h.textContent=x.help;
         h.classList.add('show');
-        setTimeout(()=>{ if(!installed()) btn.textContent=t().install; },5000);
+        h.scrollIntoView({behavior:'smooth',block:'nearest'});
+        setTimeout(()=>{
+          if(!installed()){
+            btn.textContent=t().downloading;
+            btn.classList.add('downloaded');
+          }
+        },5000);
       }
     };
   }
@@ -1519,9 +1546,12 @@ document.addEventListener("click", (e) => {
   function init(){
     consumeInstallCallback();
     render();
-    window.addEventListener('proxysg-language-change',render);
+    new MutationObserver(render).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});
     window.addEventListener('pageshow',render);
     window.addEventListener('storage',render);
+    document.addEventListener('click',e=>{
+      if(e.target?.matches?.('.trace-lang-btn,.langBtn,[data-lang]')) setTimeout(render,0);
+    });
   }
 
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init,{once:true});
