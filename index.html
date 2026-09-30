@@ -428,7 +428,7 @@
 <!-- 공통 헤더 + 제목 + 버전 -->
 <script>
   window.pageTitle = "ProxySG Trace 도구";
-  window.pageVersion = "ver.2026.09.30.02";
+  window.pageVersion = "ver.2026.09.30.03";
 </script> 
 <script src="https://etech-symantec.github.io/header.js"></script>
 
@@ -1364,7 +1364,8 @@ document.addEventListener("click", (e) => {
 <script>
 (() => {
   const SLOT_ID='proxysg-launcher-slot';
-  const INSTALL_URL='./downloads/Install_ProxySG_Trace_Launcher_v6.cmd?v=20260929-1';
+  const INSTALL_URL='./downloads/Install_ProxySG_Trace_Launcher_v6.cmd?v=20260930-2';
+  const UNINSTALL_URL='./downloads/Uninstall_ProxySG_Trace_Editor_v6.cmd?v=20260930-1';
   const PROTOCOL_URL='proxysg-trace-v6://run';
   const STORAGE_KEY='proxysgTraceLauncherInstalledVersion';
   const DOWNLOAD_NOTICE_KEY='proxysgTraceV6InstallerDownloaded';
@@ -1393,7 +1394,18 @@ document.addEventListener("click", (e) => {
       helpStep2:'다운로드된 Install_ProxySG_Trace_Launcher_v6.cmd를 클릭하여 실행합니다.',
       helpStep3:'설치가 끝나면 이 페이지가 자동으로 다시 열리고 버튼이 “Trace Editor 실행”으로 바뀝니다.',
       helpTip:'최초 설치 때만 필요한 작업입니다. 다음부터는 이 버튼 하나로 Editor가 바로 실행됩니다.',
-      helpBadge:'최초 1회 실행 필수'
+      helpBadge:'최초 1회 실행 필수',
+      uninstall:'🗑 설치 삭제',
+      uninstallConfirm:'설치된 ProxySG Trace Editor와 Launcher를 삭제하시겠습니까?\n\n브라우저에 저장된 장비/정책 프로필은 유지되고, 로컬 설치 파일과 URL Protocol 등록만 삭제됩니다.',
+      uninstallDownloaded:'⚠ 삭제 파일 다운로드됨 · 1회 실행하세요',
+      uninstallTitle:'삭제 파일을 한 번 실행하세요',
+      uninstallLead:'다운로드된 CMD를 실행하면 로컬 Editor와 Launcher가 제거됩니다.',
+      uninstallFile:'Uninstall_ProxySG_Trace_Editor_v6.cmd',
+      uninstallStep1:'브라우저 다운로드 목록에서 삭제 CMD 파일을 찾습니다.',
+      uninstallStep2:'Uninstall_ProxySG_Trace_Editor_v6.cmd를 한 번 실행합니다.',
+      uninstallStep3:'삭제가 끝나면 이 페이지가 자동으로 다시 열리고 “Trace Editor 설치” 버튼으로 돌아갑니다.',
+      uninstallTip:'브라우저에 저장된 장비/정책 프로필은 삭제하지 않습니다.',
+      uninstallBadge:'로컬 설치 제거'
     },
     en:{
       title:'ProxySG Trace Editor',
@@ -1411,17 +1423,36 @@ document.addEventListener("click", (e) => {
       helpStep2:'Click the downloaded Install_ProxySG_Trace_Launcher_v6.cmd file to run it.',
       helpStep3:'When installation finishes, this page reopens automatically and the button changes to “Run Trace Editor”.',
       helpTip:'This is required only once. After that, this single button starts the Editor directly.',
-      helpBadge:'ONE-TIME RUN REQUIRED'
+      helpBadge:'ONE-TIME RUN REQUIRED',
+      uninstall:'🗑 Uninstall',
+      uninstallConfirm:'Remove the installed ProxySG Trace Editor and Launcher?\n\nDevice/policy profiles stored in the browser will remain. Only local application files and URL protocol registrations are removed.',
+      uninstallDownloaded:'⚠ Uninstaller downloaded · Run it once',
+      uninstallTitle:'Run the uninstaller once',
+      uninstallLead:'Run the downloaded CMD once to remove the local Editor and Launcher.',
+      uninstallFile:'Uninstall_ProxySG_Trace_Editor_v6.cmd',
+      uninstallStep1:'Find the uninstaller CMD in your browser Downloads.',
+      uninstallStep2:'Run Uninstall_ProxySG_Trace_Editor_v6.cmd once.',
+      uninstallStep3:'When removal finishes, this page reopens automatically and returns to “Install Trace Editor”.',
+      uninstallTip:'Device and policy profiles stored in the browser are not deleted.',
+      uninstallBadge:'REMOVE LOCAL INSTALL'
     }
   };
 
   function t(){ return L[isEn()?'en':'ko']; }
 
-  function consumeInstallCallback(){
+  function consumeLauncherCallback(){
     const u=new URL(location.href);
-    if(u.searchParams.get('launcher')==='v6-installed'){
+    const callback=u.searchParams.get('launcher');
+    if(callback==='v6-installed'){
       localStorage.setItem(STORAGE_KEY,VERSION);
       sessionStorage.removeItem(DOWNLOAD_NOTICE_KEY);
+      sessionStorage.removeItem('proxysgTraceV6UninstallDownloaded');
+      u.searchParams.delete('launcher');
+      history.replaceState(null,'',u);
+    }else if(callback==='v6-uninstalled'){
+      localStorage.removeItem(STORAGE_KEY);
+      sessionStorage.removeItem(DOWNLOAD_NOTICE_KEY);
+      sessionStorage.removeItem('proxysgTraceV6UninstallDownloaded');
       u.searchParams.delete('launcher');
       history.replaceState(null,'',u);
     }
@@ -1463,6 +1494,21 @@ document.addEventListener("click", (e) => {
       .psgv6-stepNo{width:25px;height:25px;border-radius:8px;display:grid;place-items:center;background:#d97706;color:#fff;font-size:11px;font-weight:900}
       .psgv6-tip{margin-top:12px;padding:9px 11px;border-left:4px solid #2563eb;border-radius:8px;background:#eef5ff;color:#31547c;font-size:10.5px;font-weight:700;line-height:1.55}
       .psgv6-btn.downloaded{background:linear-gradient(135deg,#d97706,#ea580c);box-shadow:0 7px 17px rgba(217,119,6,.28);font-size:12.5px}
+      .psgv6-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:16px}
+      .psgv6-actions .psgv6-btn{margin-top:0}
+      .psgv6-uninstall{border:1px solid #ef9aa4;background:#fff1f2;color:#a92332;box-shadow:none}
+      .psgv6-uninstall:hover{background:#ffe5e8;border-color:#e56d79;box-shadow:0 5px 12px rgba(180,35,47,.10)}
+      .psgv6-removeHelp{display:none;margin-top:16px;border:2px solid #e35d6a;border-radius:16px;background:linear-gradient(135deg,#fff1f2,#fffafa 55%,#ffe8eb);color:#6f1d27;box-shadow:0 12px 28px rgba(190,40,55,.13);overflow:hidden}
+      .psgv6-removeHelp.show{display:block;animation:psgv6NoticeIn .22s ease-out}
+      .psgv6-removeHelp .psgv6-helpHead{background:linear-gradient(90deg,#ffe3e6,#fff2f3);border-bottom-color:#efadb4}
+      .psgv6-removeHelp .psgv6-helpIcon{background:#d14352;box-shadow:0 6px 14px rgba(209,67,82,.22)}
+      .psgv6-removeHelp .psgv6-helpTitle{color:#8e2430}
+      .psgv6-removeHelp .psgv6-helpLead{color:#a33d48}
+      .psgv6-removeHelp .psgv6-helpBadge{background:#b4232f}
+      .psgv6-removeHelp .psgv6-file{border-color:#e8adb4;color:#7d2a34}
+      .psgv6-removeHelp .psgv6-step{border-color:rgba(209,67,82,.24)}
+      .psgv6-removeHelp .psgv6-stepNo{background:#c73d4b}
+      .psgv6-removeHelp .psgv6-tip{border-left-color:#d14352;background:#fff0f2;color:#7b3841}
       @keyframes psgv6NoticeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
     `;
     document.head.appendChild(s);
@@ -1478,6 +1524,16 @@ document.addEventListener("click", (e) => {
     setTimeout(()=>a.remove(),500);
   }
 
+  function downloadUninstaller(){
+    const a=document.createElement('a');
+    a.href=UNINSTALL_URL;
+    a.download='Uninstall_ProxySG_Trace_Editor_v6.cmd';
+    a.style.display='none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(()=>a.remove(),500);
+  }
+
   function launchEditor(){
     // Direct navigation from the user's click gesture.
     // No hidden iframe and no delayed synthetic protocol request.
@@ -1485,11 +1541,12 @@ document.addEventListener("click", (e) => {
   }
 
   function render(){
-    consumeInstallCallback();
+    consumeLauncherCallback();
     const slot=document.getElementById(SLOT_ID);
     if(!slot) return;
     style();
     const x=t(), ok=installed(), downloaded=installerDownloaded();
+    const uninstallDownloaded=sessionStorage.getItem('proxysgTraceV6UninstallDownloaded')==='1' && ok;
 
     slot.innerHTML=`
       <div class="psgv6">
@@ -1497,8 +1554,14 @@ document.addEventListener("click", (e) => {
           <div><div class="psgv6-title">${x.title}</div><div class="psgv6-sub">${x.sub}</div></div>
           <div class="psgv6-badge">● ${x.badge}</div>
         </div>
-        <button id="psgv6Button" class="psgv6-btn${downloaded?' downloaded':''}">${ok?x.run:(downloaded?x.downloading:x.install)}</button>
+
+        <div class="psgv6-actions">
+          <button id="psgv6Button" class="psgv6-btn${downloaded?' downloaded':''}">${ok?x.run:(downloaded?x.downloading:x.install)}</button>
+          ${ok?`<button id="psgv6Uninstall" class="psgv6-btn psgv6-uninstall">${uninstallDownloaded?x.uninstallDownloaded:x.uninstall}</button>`:''}
+        </div>
+
         <div class="psgv6-note">${ok?x.runNote:x.installNote}</div>
+
         <div id="psgv6Help" class="psgv6-help">
           <div class="psgv6-helpHead">
             <div class="psgv6-helpIcon">!</div>
@@ -1518,10 +1581,46 @@ document.addEventListener("click", (e) => {
             <div class="psgv6-tip">✓ ${x.helpTip}</div>
           </div>
         </div>
+
+        <div id="psgv6RemoveHelp" class="psgv6-removeHelp">
+          <div class="psgv6-helpHead">
+            <div class="psgv6-helpIcon">!</div>
+            <div>
+              <div class="psgv6-helpTitle">${x.uninstallTitle}</div>
+              <div class="psgv6-helpLead">${x.uninstallLead}</div>
+            </div>
+            <div class="psgv6-helpBadge">${x.uninstallBadge}</div>
+          </div>
+          <div class="psgv6-helpBody">
+            <div class="psgv6-file">🗑 ${x.uninstallFile}</div>
+            <div class="psgv6-steps">
+              <div class="psgv6-step"><div class="psgv6-stepNo">1</div><div>${x.uninstallStep1}</div></div>
+              <div class="psgv6-step"><div class="psgv6-stepNo">2</div><div>${x.uninstallStep2}</div></div>
+              <div class="psgv6-step"><div class="psgv6-stepNo">3</div><div>${x.uninstallStep3}</div></div>
+            </div>
+            <div class="psgv6-tip">✓ ${x.uninstallTip}</div>
+          </div>
+        </div>
       </div>`;
 
     const btn=slot.querySelector('#psgv6Button');
+
     if(downloaded) slot.querySelector('#psgv6Help')?.classList.add('show');
+    if(uninstallDownloaded) slot.querySelector('#psgv6RemoveHelp')?.classList.add('show');
+
+    const uninstallBtn=slot.querySelector('#psgv6Uninstall');
+    if(uninstallBtn){
+      uninstallBtn.onclick=()=>{
+        if(!window.confirm(x.uninstallConfirm)) return;
+        downloadUninstaller();
+        sessionStorage.setItem('proxysgTraceV6UninstallDownloaded','1');
+        uninstallBtn.textContent=x.uninstallDownloaded;
+        const removeHelp=slot.querySelector('#psgv6RemoveHelp');
+        removeHelp?.classList.add('show');
+        removeHelp?.scrollIntoView({behavior:'smooth',block:'nearest'});
+      };
+    }
+
     btn.onclick=()=>{
       if(installed()){
         launchEditor();
@@ -1542,9 +1641,8 @@ document.addEventListener("click", (e) => {
       }
     };
   }
-
   function init(){
-    consumeInstallCallback();
+    consumeLauncherCallback();
     render();
     new MutationObserver(render).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});
     window.addEventListener('pageshow',render);
