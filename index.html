@@ -421,6 +421,11 @@
     body[data-trace-mode="direct"] #directAnalysisPanel{border-radius:14px !important}
   }
 
+
+  /* v12: 언어 전환 안정화 */
+  html[data-lang-switching="1"] body { cursor: progress; }
+  .trace-language-switch { contain: layout style; }
+
 </style>
 </head>
 <body>
@@ -428,7 +433,7 @@
 <!-- 공통 헤더 + 제목 + 버전 -->
 <script>
   window.pageTitle = "ProxySG Trace 도구";
-  window.pageVersion = "ver.2026.09.29.03";
+  window.pageVersion = "ver.2026.09.30.01";
 </script> 
 <script src="https://etech-symantec.github.io/header.js"></script>
 
@@ -523,20 +528,26 @@
     nodes.forEach(n=>{
       const raw=n.nodeValue || ''; const lead=(raw.match(/^\s*/)||[''])[0], trail=(raw.match(/\s*$/)||[''])[0];
       const core=raw.trim(); if(!core) return;
-      if(map[core]) n.nodeValue=lead+map[core]+trail;
+      let next=null;
+      if(map[core]) next=lead+map[core]+trail;
       else if(lang==='en'){
-        let m=core.match(/^최신 Editor v(.+)$/); if(m) n.nodeValue=lead+'Latest Editor v'+m[1]+trail;
+        const m=core.match(/^최신 Editor v(.+)$/);
+        if(m) next=lead+'Latest Editor v'+m[1]+trail;
       } else {
-        let m=core.match(/^Latest Editor v(.+)$/); if(m) n.nodeValue=lead+'최신 Editor v'+m[1]+trail;
+        const m=core.match(/^Latest Editor v(.+)$/);
+        if(m) next=lead+'최신 Editor v'+m[1]+trail;
       }
+      if(next!==null && next!==raw) n.nodeValue=next;
     });
     root.querySelectorAll?.('[aria-label="닫기"]').forEach(el=>{ if(lang==='en') el.setAttribute('aria-label','Close'); });
     root.querySelectorAll?.('[aria-label="Close"]').forEach(el=>{ if(lang==='ko') el.setAttribute('aria-label','닫기'); });
   }
 
   function applyLanguage(lang, rerun=false){
+    document.documentElement.dataset.langSwitching='1';
     lang = lang === 'en' ? 'en' : 'ko';
     window.PROXYSG_LANG=lang;
+    window.PROXYSG_UI_LANG=lang;
     localStorage.setItem('proxysgTraceLanguage',lang);
     document.documentElement.lang=lang;
     const d=dict[lang];
@@ -550,9 +561,18 @@
     if(result && (!window.sessions || !window.sessions.length) && !document.getElementById('inputText')?.value.trim()) result.textContent=d.initialResult;
     document.querySelectorAll('.trace-lang-btn').forEach(btn=>btn.classList.toggle('active',btn.dataset.lang===lang));
     const ref=document.getElementById('refBtn'); if(ref) ref.textContent=d.timingRef;
-    translateLooseText(document.body);
+
+    // 전체 document.body를 TreeWalker로 매번 훑지 않습니다.
+    // 동적/외부 영역만 제한적으로 번역해 언어 전환 시 UI 프리즈를 방지합니다.
+    const launcherRoot=document.getElementById('proxysg-launcher-slot');
+    if(launcherRoot) translateLooseText(launcherRoot);
+
     window.dispatchEvent(new CustomEvent('proxysg-language-change',{detail:{lang}}));
-    if(rerun && document.getElementById('inputText')?.value.trim()) setTimeout(()=>document.getElementById('analyzeBtn')?.click(),0);
+    requestAnimationFrame(()=>{ delete document.documentElement.dataset.langSwitching; });
+
+    // 언어 변경만으로 대용량 Trace를 자동 재분석하지 않음.
+    // 사용자가 분석 버튼을 다시 누르면 새 언어 라벨로 렌더링됩니다.
+
   }
 
   function initLanguageUI(){
@@ -560,19 +580,31 @@
     document.querySelectorAll('.trace-lang-btn').forEach(btn=>{
       if(btn.dataset.langBound==='1') return;
       btn.dataset.langBound='1';
-      btn.addEventListener('click',()=>applyLanguage(btn.dataset.lang,true));
+      btn.addEventListener('click',()=>applyLanguage(btn.dataset.lang,false));
     });
     applyLanguage(initial,false);
 
+    let translateQueued=false;
+    const pendingRoots=new Set();
     const mo=new MutationObserver(muts=>{
       for(const m of muts){
         m.addedNodes.forEach(n=>{
-          if(n.nodeType===1) translateLooseText(n);
-          else if(n.nodeType===3 && n.parentElement) translateLooseText(n.parentElement);
+          if(n.nodeType===1) pendingRoots.add(n);
+          else if(n.nodeType===3 && n.parentElement) pendingRoots.add(n.parentElement);
         });
       }
+      if(translateQueued || pendingRoots.size===0) return;
+      translateQueued=true;
+      requestAnimationFrame(()=>{
+        translateQueued=false;
+        const roots=[...pendingRoots];
+        pendingRoots.clear();
+        roots.forEach(root=>translateLooseText(root));
+      });
     });
-    mo.observe(document.body,{childList:true,subtree:true,characterData:true});
+    // characterData 감시는 의도적으로 사용하지 않습니다.
+    // 번역 과정에서 텍스트를 바꾸면 다시 observer가 발화해 반복 렌더링/멈춤이 발생할 수 있습니다.
+    mo.observe(document.body,{childList:true,subtree:true});
     window.__proxysgLanguageObserver=mo;
   }
 
@@ -1487,12 +1519,9 @@ document.addEventListener("click", (e) => {
   function init(){
     consumeInstallCallback();
     render();
-    new MutationObserver(render).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});
+    window.addEventListener('proxysg-language-change',render);
     window.addEventListener('pageshow',render);
     window.addEventListener('storage',render);
-    document.addEventListener('click',e=>{
-      if(e.target?.matches?.('.trace-lang-btn,.langBtn,[data-lang]')) setTimeout(render,0);
-    });
   }
 
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init,{once:true});
