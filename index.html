@@ -428,7 +428,7 @@
 <!-- 공통 헤더 + 제목 + 버전 -->
 <script>
   window.pageTitle = "ProxySG Trace 도구";
-  window.pageVersion = "ver.2026.10.15.01";
+  window.pageVersion = "ver.2026.10.15.02";
 </script> 
 <script src="https://etech-symantec.github.io/header.js"></script>
 
@@ -1697,12 +1697,18 @@ document.addEventListener("click", (e) => {
     document.addEventListener('visibilitychange',()=>{ if(!document.hidden) syncAndRender(); });
 
     // Short polling window is intentional: install/uninstall opens the callback in another tab.
-    // This makes the original tab update even if a storage event is suppressed by browser policy.
+    // Check every 3 seconds for 30 seconds, and re-render only when the state actually changes.
+    // This avoids visible UI refresh/flicker while still covering browsers that suppress storage events.
     let polls=0;
+    let lastPolledState=readState();
     const timer=setInterval(()=>{
-      syncAndRender();
-      if(++polls>=30) clearInterval(timer);
-    },1000);
+      const nowState=readState();
+      if(nowState!==lastPolledState){
+        lastPolledState=nowState;
+        syncAndRender();
+      }
+      if(++polls>=10) clearInterval(timer);
+    },3000);
 
     render();
     window.addEventListener('proxysg-language-change',render);
