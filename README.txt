@@ -1,29 +1,27 @@
-ProxySG Operations & Analysis Tools v17
+ProxySG Operations & Analysis Tools v18
 
 Changes
 -------
-1. Default first screen is now 'ProxySG Direct Connection'.
-2. Top tool order:
-   - ProxySG Direct Connection
-   - Trace File Analysis
-   - Sysinfo Analysis
-   - ISG Analysis
-   - MIB Analysis
-3. External tool tabs navigate to:
-   https://etech-symantec.github.io/sysinfo/
-   https://etech-symantec.github.io/isg/
-   https://etech-symantec.github.io/mib/
-4. Direct connection description/workflow now includes Local Admin management.
-5. Direct workflow is now:
-   1) Device Settings
-   2) Local Admin Management
-   3) Trace Policy
-   4) LIVE Trace
-   5) Instant Analysis
-6. Korean/English strings added for all new tabs and workflow text.
-7. ?mode=file opens Trace File Analysis. No mode parameter opens Direct Connection.
+- Sysinfo / ISG / MIB tabs no longer navigate away from the Trace site.
+- Clicking each tab shows the corresponding web application directly below the tab row.
+- Each external web app is lazy-loaded only when its tab is selected for the first time.
+- Embedded pages keep their state when switching between tabs.
+- Query modes are supported:
+    default or ?mode=direct -> ProxySG Direct Connection
+    ?mode=file              -> Trace File Analysis
+    ?mode=sysinfo           -> Sysinfo Analysis
+    ?mode=isg               -> ISG Analysis
+    ?mode=mib               -> MIB Analysis
+- Optional 'Open in new window' button is provided in each embedded tool toolbar.
+- Korean / English labels are included.
+
+Embedded pages
+--------------
+https://etech-symantec.github.io/sysinfo/
+https://etech-symantec.github.io/isg/
+https://etech-symantec.github.io/mib/
 
 Deploy
 ------
-Replace the repository index.html only.
-Existing downloads/ installer/uninstaller/editor files can remain unchanged.
+Replace index.html only.
+Existing installer/uninstaller/editor files remain unchanged.

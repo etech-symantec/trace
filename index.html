@@ -436,23 +436,11 @@
   .trace-mode-card.active{
     min-height:101px !important;
   }
-  .trace-mode-card.tool-external{
-    border-color:#dbe3ed !important;
-  }
-  .trace-mode-card.tool-external .trace-mode-title{
+  .trace-mode-card.tool-embedded .trace-mode-title{
     font-size:.92rem;
   }
-  .trace-mode-card.tool-external .trace-mode-desc{
+  .trace-mode-card.tool-embedded .trace-mode-desc{
     font-size:.74rem;
-  }
-  .trace-mode-card.tool-external::before{
-    content:"↗";
-    position:absolute;
-    right:12px;
-    bottom:10px;
-    color:#94a3b8;
-    font-size:.78rem;
-    font-weight:900;
   }
   .trace-mode-card.tool-sysinfo:hover{border-color:#86b7dd !important;background:linear-gradient(180deg,#ffffff,#eef8ff) !important}
   .trace-mode-card.tool-isg:hover{border-color:#9dcdb0 !important;background:linear-gradient(180deg,#ffffff,#f0fbf4) !important}
@@ -497,6 +485,130 @@
     }
   }
 
+
+  /* ===== v18: embedded Sysinfo / ISG / MIB panels ===== */
+  .trace-mode-card.tool-embedded{
+    border-color:#dbe3ed !important;
+  }
+  .trace-mode-card.tool-embedded::before{
+    display:none !important;
+    content:none !important;
+  }
+
+  .tool-embed-panel{
+    padding:0 !important;
+    overflow:hidden !important;
+    background:#fff !important;
+  }
+  .tool-embed-shell{
+    position:relative;
+    min-height:760px;
+    background:#fff;
+    border-radius:0 0 13px 13px;
+    overflow:hidden;
+  }
+  .tool-embed-toolbar{
+    height:46px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:0 14px;
+    border-bottom:1px solid #dce4ee;
+    background:linear-gradient(180deg,#fbfdff 0%,#f5f8fc 100%);
+  }
+  .tool-embed-title{
+    font-size:.82rem;
+    font-weight:850;
+    color:#23486f;
+  }
+  .tool-embed-url{
+    margin-left:2px;
+    color:#94a3b8;
+    font-size:.66rem;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .tool-embed-open{
+    margin-left:auto !important;
+    padding:6px 10px !important;
+    min-height:auto !important;
+    border:1px solid #c9d7e6 !important;
+    border-radius:8px !important;
+    background:#fff !important;
+    color:#315b85 !important;
+    font-size:.68rem !important;
+    font-weight:800 !important;
+    line-height:1 !important;
+    box-shadow:none !important;
+  }
+  .tool-embed-open:hover{
+    border-color:#94b5d8 !important;
+    background:#edf6ff !important;
+  }
+  .tool-embed-frame-wrap{
+    position:relative;
+    height:calc(100vh - 235px);
+    min-height:760px;
+    background:#f8fafc;
+  }
+  .tool-embed-frame{
+    display:block;
+    width:100%;
+    height:100%;
+    border:0;
+    background:#fff;
+  }
+  .tool-embed-loading{
+    position:absolute;
+    inset:0;
+    z-index:2;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    background:linear-gradient(180deg,#f8fbff,#fff);
+    color:#60758d;
+    font-size:.78rem;
+    font-weight:750;
+    transition:opacity .18s ease,visibility .18s ease;
+  }
+  .tool-embed-loading.done{
+    opacity:0;
+    visibility:hidden;
+    pointer-events:none;
+  }
+  .tool-embed-spinner{
+    width:18px;
+    height:18px;
+    border:2px solid #cbd8e7;
+    border-top-color:#3977bd;
+    border-radius:50%;
+    animation:toolEmbedSpin .8s linear infinite;
+  }
+  @keyframes toolEmbedSpin{to{transform:rotate(360deg)}}
+
+  body[data-trace-mode="sysinfo"] #sysinfoAnalysisPanel,
+  body[data-trace-mode="isg"] #isgAnalysisPanel,
+  body[data-trace-mode="mib"] #mibAnalysisPanel{
+    border-top-left-radius:14px !important;
+    border-top-right-radius:14px !important;
+  }
+  body[data-trace-mode="sysinfo"] #sysinfoAnalysisPanel::before,
+  body[data-trace-mode="isg"] #isgAnalysisPanel::before,
+  body[data-trace-mode="mib"] #mibAnalysisPanel::before{
+    display:none !important;
+  }
+
+  @media(max-width:900px){
+    .tool-embed-frame-wrap{
+      height:calc(100vh - 180px);
+      min-height:620px;
+    }
+    .tool-embed-url{display:none}
+    .tool-embed-toolbar{height:44px;padding:0 10px}
+  }
+
 </style>
 </head>
 <body>
@@ -504,7 +616,7 @@
 <!-- 공통 헤더 + 제목 + 버전 -->
 <script>
   window.pageTitle = "ProxySG 운영 · 분석 도구";
-  window.pageVersion = "ver.2026.10.15.05";
+  window.pageVersion = "ver.2026.10.15.06";
 </script> 
 <script src="https://etech-symantec.github.io/header.js"></script>
 
@@ -517,10 +629,15 @@
       directTabDesc:'Local Admin 관리부터 Local Policy·Trace 정책, LIVE Trace/Access Log 분석까지 로컬 Editor에서 수행합니다.',
       fileTabTitle:'📄 Trace 파일 분석', browserBadge:'브라우저',
       fileTabDesc:'저장된 Trace 파일을 업로드하거나 내용을 붙여넣어 브라우저에서 바로 분석합니다.',
-      sysinfoTabTitle:'🧾 Sysinfo 분석', sysinfoTabDesc:'ProxySG Sysinfo 분석 도구로 이동합니다.',
-      isgTabTitle:'🧩 ISG 분석', isgTabDesc:'ISG 분석 도구로 이동합니다.',
-      mibTabTitle:'📡 MIB 분석', mibTabDesc:'MIB/SNMP 분석 도구로 이동합니다.',
-      webToolBadge:'Web Tool',
+      sysinfoTabTitle:'🧾 Sysinfo 분석', sysinfoTabDesc:'Sysinfo 분석 페이지를 아래 영역에서 바로 사용합니다.',
+      isgTabTitle:'🧩 ISG 분석', isgTabDesc:'ISG 분석 페이지를 아래 영역에서 바로 사용합니다.',
+      mibTabTitle:'📡 MIB 분석', mibTabDesc:'MIB/SNMP 분석 페이지를 아래 영역에서 바로 사용합니다.',
+      webToolBadge:'Web App',
+      sysinfoPanelTitle:'🧾 Sysinfo 분석',
+      isgPanelTitle:'🧩 ISG 분석',
+      mibPanelTitle:'📡 MIB 분석',
+      embedLoading:'페이지 불러오는 중…',
+      openNewWindow:'새 창에서 열기',
       traceInputTitle:'📄 Trace 입력', noFile:'(선택된 파일 없음)',
       traceInputDesc:'저장된 Trace 파일을 업로드하거나 내용을 붙여넣으면 브라우저에서 바로 분석합니다.',
       tracePlaceholder:'여기에 trace 로그를 붙여넣거나 파일을 끌어 놓으세요.',
@@ -546,10 +663,15 @@
       directTabDesc:'Use the local Editor for Local Admin management, Local Policy/Trace operations, and LIVE Trace/Access Log analysis.',
       fileTabTitle:'📄 Trace File Analysis', browserBadge:'Browser',
       fileTabDesc:'Upload a saved Trace file or paste its contents for immediate browser-based analysis.',
-      sysinfoTabTitle:'🧾 Sysinfo Analysis', sysinfoTabDesc:'Open the ProxySG Sysinfo analysis tool.',
-      isgTabTitle:'🧩 ISG Analysis', isgTabDesc:'Open the ISG analysis tool.',
-      mibTabTitle:'📡 MIB Analysis', mibTabDesc:'Open the MIB/SNMP analysis tool.',
-      webToolBadge:'Web Tool',
+      sysinfoTabTitle:'🧾 Sysinfo Analysis', sysinfoTabDesc:'Use the Sysinfo analysis page directly in the panel below.',
+      isgTabTitle:'🧩 ISG Analysis', isgTabDesc:'Use the ISG analysis page directly in the panel below.',
+      mibTabTitle:'📡 MIB Analysis', mibTabDesc:'Use the MIB/SNMP analysis page directly in the panel below.',
+      webToolBadge:'Web App',
+      sysinfoPanelTitle:'🧾 Sysinfo Analysis',
+      isgPanelTitle:'🧩 ISG Analysis',
+      mibPanelTitle:'📡 MIB Analysis',
+      embedLoading:'Loading page…',
+      openNewWindow:'Open in new window',
       traceInputTitle:'📄 Trace Input', noFile:'(No file selected)',
       traceInputDesc:'Upload a saved Trace file or paste its contents to analyze it directly in the browser.',
       tracePlaceholder:'Paste Trace logs here or drop a file.',
@@ -691,19 +813,19 @@
     <div class="trace-mode-desc" data-i18n="fileTabDesc">저장된 Trace 파일을 업로드하거나 내용을 붙여넣어 브라우저에서 바로 분석합니다.</div>
   </button>
 
-  <button type="button" class="trace-mode-card tool-external tool-sysinfo" data-tool-url="https://etech-symantec.github.io/sysinfo/">
+  <button type="button" class="trace-mode-card tool-embedded tool-sysinfo" data-trace-mode="sysinfo">
     <div class="trace-mode-title"><span data-i18n="sysinfoTabTitle">🧾 Sysinfo 분석</span> <span class="trace-mode-badge" data-i18n="webToolBadge">Web Tool</span></div>
-    <div class="trace-mode-desc" data-i18n="sysinfoTabDesc">ProxySG Sysinfo 분석 도구로 이동합니다.</div>
+    <div class="trace-mode-desc" data-i18n="sysinfoTabDesc">Sysinfo 분석 페이지를 아래 영역에서 바로 사용합니다.</div>
   </button>
 
-  <button type="button" class="trace-mode-card tool-external tool-isg" data-tool-url="https://etech-symantec.github.io/isg/">
+  <button type="button" class="trace-mode-card tool-embedded tool-isg" data-trace-mode="isg">
     <div class="trace-mode-title"><span data-i18n="isgTabTitle">🧩 ISG 분석</span> <span class="trace-mode-badge" data-i18n="webToolBadge">Web Tool</span></div>
-    <div class="trace-mode-desc" data-i18n="isgTabDesc">ISG 분석 도구로 이동합니다.</div>
+    <div class="trace-mode-desc" data-i18n="isgTabDesc">ISG 분석 페이지를 아래 영역에서 바로 사용합니다.</div>
   </button>
 
-  <button type="button" class="trace-mode-card tool-external tool-mib" data-tool-url="https://etech-symantec.github.io/mib/">
+  <button type="button" class="trace-mode-card tool-embedded tool-mib" data-trace-mode="mib">
     <div class="trace-mode-title"><span data-i18n="mibTabTitle">📡 MIB 분석</span> <span class="trace-mode-badge" data-i18n="webToolBadge">Web Tool</span></div>
-    <div class="trace-mode-desc" data-i18n="mibTabDesc">MIB/SNMP 분석 도구로 이동합니다.</div>
+    <div class="trace-mode-desc" data-i18n="mibTabDesc">MIB/SNMP 분석 페이지를 아래 영역에서 바로 사용합니다.</div>
   </button>
 </div>
 
@@ -873,6 +995,60 @@
         <p><span data-i18n="localDescBefore">Launcher는</span><span data-i18n="localDescAfter">상주하지 않으며 localhost 포트를 열지 않습니다. Editor는 ZIP으로 내려받아 SHA-256을 검증한 뒤 LocalAppData에 설치합니다.</span></p>
         <div class="direct-note" data-i18n="smartScreenNote">최초 설치 시 Windows가 CMD 실행 확인 또는 SmartScreen 경고를 표시할 수 있습니다. 설치 CMD는 서비스·시작프로그램·localhost Listener를 만들지 않으며, Editor ZIP 검증 및 설치만 수행합니다.</div>
       </div>
+    </div>
+  </div>
+</div>
+
+<div id="sysinfoAnalysisPanel" class="container mode-panel tool-embed-panel">
+  <div class="tool-embed-shell">
+    <div class="tool-embed-toolbar">
+      <div class="tool-embed-title" data-i18n="sysinfoPanelTitle">🧾 Sysinfo 분석</div>
+      <div class="tool-embed-url">etech-symantec.github.io/sysinfo/</div>
+      <button type="button" class="tool-embed-open" data-open-tool="sysinfo" data-i18n="openNewWindow">새 창에서 열기</button>
+    </div>
+    <div class="tool-embed-frame-wrap">
+      <div class="tool-embed-loading" data-loading-for="sysinfo"><span class="tool-embed-spinner"></span><span data-i18n="embedLoading">페이지 불러오는 중…</span></div>
+      <iframe id="sysinfoToolFrame" class="tool-embed-frame" title="Sysinfo Analysis"
+        data-src="https://etech-symantec.github.io/sysinfo/"
+        src="about:blank"
+        allow="clipboard-read; clipboard-write"
+        referrerpolicy="strict-origin-when-cross-origin"></iframe>
+    </div>
+  </div>
+</div>
+
+<div id="isgAnalysisPanel" class="container mode-panel tool-embed-panel">
+  <div class="tool-embed-shell">
+    <div class="tool-embed-toolbar">
+      <div class="tool-embed-title" data-i18n="isgPanelTitle">🧩 ISG 분석</div>
+      <div class="tool-embed-url">etech-symantec.github.io/isg/</div>
+      <button type="button" class="tool-embed-open" data-open-tool="isg" data-i18n="openNewWindow">새 창에서 열기</button>
+    </div>
+    <div class="tool-embed-frame-wrap">
+      <div class="tool-embed-loading" data-loading-for="isg"><span class="tool-embed-spinner"></span><span data-i18n="embedLoading">페이지 불러오는 중…</span></div>
+      <iframe id="isgToolFrame" class="tool-embed-frame" title="ISG Analysis"
+        data-src="https://etech-symantec.github.io/isg/"
+        src="about:blank"
+        allow="clipboard-read; clipboard-write"
+        referrerpolicy="strict-origin-when-cross-origin"></iframe>
+    </div>
+  </div>
+</div>
+
+<div id="mibAnalysisPanel" class="container mode-panel tool-embed-panel">
+  <div class="tool-embed-shell">
+    <div class="tool-embed-toolbar">
+      <div class="tool-embed-title" data-i18n="mibPanelTitle">📡 MIB 분석</div>
+      <div class="tool-embed-url">etech-symantec.github.io/mib/</div>
+      <button type="button" class="tool-embed-open" data-open-tool="mib" data-i18n="openNewWindow">새 창에서 열기</button>
+    </div>
+    <div class="tool-embed-frame-wrap">
+      <div class="tool-embed-loading" data-loading-for="mib"><span class="tool-embed-spinner"></span><span data-i18n="embedLoading">페이지 불러오는 중…</span></div>
+      <iframe id="mibToolFrame" class="tool-embed-frame" title="MIB Analysis"
+        data-src="https://etech-symantec.github.io/mib/"
+        src="about:blank"
+        allow="clipboard-read; clipboard-write"
+        referrerpolicy="strict-origin-when-cross-origin"></iframe>
     </div>
   </div>
 </div>
@@ -1441,39 +1617,82 @@ document.addEventListener("click", (e) => {
 
 <script>
 (() => {
-  const buttons = [...document.querySelectorAll('[data-trace-mode]')];
-  const externalButtons = [...document.querySelectorAll('[data-tool-url]')];
-  const filePanel = document.getElementById('fileAnalysisPanel');
-  const directPanel = document.getElementById('directAnalysisPanel');
+  const buttons=[...document.querySelectorAll('[data-trace-mode]')];
 
-  function setTraceMode(mode, updateUrl = true) {
-    const selected = mode === 'file' ? 'file' : 'direct';
-    const direct = selected === 'direct';
+  const panels={
+    direct:document.getElementById('directAnalysisPanel'),
+    file:document.getElementById('fileAnalysisPanel'),
+    sysinfo:document.getElementById('sysinfoAnalysisPanel'),
+    isg:document.getElementById('isgAnalysisPanel'),
+    mib:document.getElementById('mibAnalysisPanel')
+  };
 
-    document.body.dataset.traceMode = selected;
-    filePanel?.classList.toggle('active', !direct);
-    directPanel?.classList.toggle('active', direct);
-    buttons.forEach(btn => btn.classList.toggle('active', btn.dataset.traceMode === selected));
+  const tools={
+    sysinfo:{frame:document.getElementById('sysinfoToolFrame'),url:'https://etech-symantec.github.io/sysinfo/'},
+    isg:{frame:document.getElementById('isgToolFrame'),url:'https://etech-symantec.github.io/isg/'},
+    mib:{frame:document.getElementById('mibToolFrame'),url:'https://etech-symantec.github.io/mib/'}
+  };
 
-    if (updateUrl) {
-      const u = new URL(location.href);
-      // Direct connection is now the default first screen.
-      if (selected === 'file') u.searchParams.set('mode', 'file');
-      else u.searchParams.delete('mode');
-      history.replaceState(null, '', u);
+  const validModes=new Set(Object.keys(panels));
+
+  function ensureToolLoaded(mode){
+    const tool=tools[mode];
+    if(!tool?.frame || tool.frame.dataset.loaded==='1') return;
+
+    const loading=document.querySelector(`[data-loading-for="${mode}"]`);
+    tool.frame.addEventListener('load',()=>{
+      loading?.classList.add('done');
+    },{once:true});
+
+    tool.frame.dataset.loaded='1';
+    tool.frame.src=tool.frame.dataset.src || tool.url;
+  }
+
+  function setTraceMode(mode,updateUrl=true){
+    const selected=validModes.has(mode)?mode:'direct';
+
+    document.body.dataset.traceMode=selected;
+
+    Object.entries(panels).forEach(([name,panel])=>{
+      panel?.classList.toggle('active',name===selected);
+    });
+
+    buttons.forEach(btn=>{
+      btn.classList.toggle('active',btn.dataset.traceMode===selected);
+    });
+
+    if(tools[selected]) ensureToolLoaded(selected);
+
+    if(updateUrl){
+      const u=new URL(location.href);
+      // Direct connection remains the default; other modes are explicitly recorded.
+      if(selected==='direct') u.searchParams.delete('mode');
+      else u.searchParams.set('mode',selected);
+      history.replaceState(null,'',u);
     }
   }
 
-  buttons.forEach(btn => btn.addEventListener('click', () => setTraceMode(btn.dataset.traceMode)));
+  buttons.forEach(btn=>{
+    btn.addEventListener('click',()=>setTraceMode(btn.dataset.traceMode));
+  });
 
-  externalButtons.forEach(btn => btn.addEventListener('click', () => {
-    const url = btn.dataset.toolUrl;
-    if (url) window.location.href = url;
-  }));
+  document.querySelectorAll('[data-open-tool]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const key=btn.dataset.openTool;
+      const url=tools[key]?.url;
+      if(url) window.open(url,'_blank','noopener');
+    });
+  });
 
-  const requested = new URLSearchParams(location.search).get('mode');
-  const initial = requested === 'file' ? 'file' : 'direct';
-  setTraceMode(initial, false);
+  const requested=new URLSearchParams(location.search).get('mode');
+  const initial=validModes.has(requested)?requested:'direct';
+  setTraceMode(initial,false);
+
+  // Browser back/forward should also switch the visible panel.
+  window.addEventListener('popstate',()=>{
+    const mode=new URLSearchParams(location.search).get('mode');
+    setTraceMode(validModes.has(mode)?mode:'direct',false);
+  });
 })();
 </script>
 
