@@ -748,6 +748,27 @@
     }
   }
 
+
+  /* ===== v20.2: Trace 분석 전용 / 언어 토글 제거 ===== */
+  .trace-language-bar,
+  .trace-language-switch,
+  .trace-lang-btn,
+  .trace-language-standalone {
+    display:none !important;
+  }
+
+  #fileAnalysisPanel.mode-panel,
+  #fileAnalysisPanel.mode-panel.active {
+    margin-top:14px !important;
+  }
+
+  @media(max-width:900px){
+    #fileAnalysisPanel.mode-panel,
+    #fileAnalysisPanel.mode-panel.active {
+      margin-top:10px !important;
+    }
+  }
+
 </style>
 </head>
 <body>
@@ -755,7 +776,7 @@
 <!-- 공통 헤더 + 제목 + 버전 -->
 <script>
   window.pageTitle = "ProxySG Trace · 분석 도구";
-  window.pageVersion = "ver.2026.10.15.09";
+  window.pageVersion = "ver.2026.10.15.10";
 </script> 
 <script src="https://etech-symantec.github.io/header.js"></script>
 
@@ -877,7 +898,8 @@
   }
 
   function initLanguageUI(){
-    const initial=localStorage.getItem('proxysgTraceLanguage')==='en'?'en':'ko';
+    localStorage.removeItem('proxysgTraceLanguage');
+    const initial='ko';
     document.querySelectorAll('.trace-lang-btn').forEach(btn=>{
       if(btn.dataset.langBound==='1') return;
       btn.dataset.langBound='1';
@@ -915,17 +937,6 @@
   }
 })();
 </script>
-
-
-
-
-<div class="trace-language-bar trace-language-standalone" aria-label="Language">
-  <div class="trace-language-switch">
-    <button type="button" class="trace-lang-btn active" data-lang="ko">한국어</button>
-    <button type="button" class="trace-lang-btn" data-lang="en">English</button>
-  </div>
-</div>
-
 <div id="fileAnalysisPanel" class="container mode-panel active">
   <div class="file-analysis-card">
     <h2 style="
@@ -1589,13 +1600,7 @@ document.addEventListener("click", (e) => {
     frame.src = "";
   }
 });
-
-
-
-
-
 </script>
-
 
 <!-- 🔹 참고 문서 모달 -->
 <div id="refModal" style="
@@ -1627,14 +1632,5 @@ document.addEventListener("click", (e) => {
     <iframe id="refFrame" src="" style="flex:1; border:none; width:100%;"></iframe>
   </div>
 </div>
-
-
-
-
-
-
-
-
-
 </body>
 </html>
