@@ -1,6 +1,6 @@
 @echo off
 setlocal EnableExtensions DisableDelayedExpansion
-title ProxySG Trace Launcher v6.1 - Install / Repair
+title ProxySG Trace Launcher v6.2 - Install / Repair
 
 set "BASEURL=https://etech-symantec.github.io/trace/downloads"
 set "APPDIR=%LOCALAPPDATA%\Etech\ProxySGTrace"
@@ -150,7 +150,7 @@ if exist "%EXTRACTDIR%" rmdir /s /q "%EXTRACTDIR%" >nul 2>&1
 echo [OK] Installation completed successfully.
 
 rem Open callback page so the web UI changes from Install to Run.
-start "" "https://etech-symantec.github.io/trace/?mode=direct&launcher=v6-installed"
+start "" "https://etech-symantec.github.io/trace/?mode=direct&launcher=v6-installed&_=%%RANDOM%%%%RANDOM%%"
 
 timeout /t 2 /nobreak >nul
 exit /b 0

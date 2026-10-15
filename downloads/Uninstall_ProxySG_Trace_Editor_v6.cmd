@@ -1,11 +1,11 @@
 @echo off
 setlocal EnableExtensions DisableDelayedExpansion
-title ProxySG Trace Editor - Uninstall v6.2
+title ProxySG Trace Editor - Uninstall v6.3
 
 set "APPDIR=%LOCALAPPDATA%\Etech\ProxySGTrace"
 set "LOGFILE=%TEMP%\ProxySG_Trace_Uninstall_v6.log"
 
-> "%LOGFILE%" echo [%date% %time%] Uninstall v6.2 started
+> "%LOGFILE%" echo [%date% %time%] Uninstall v6.3 started
 >>"%LOGFILE%" echo [%date% %time%] APPDIR=%APPDIR%
 
 echo [1/5] Closing ProxySG Trace Editor and related launcher processes...
@@ -68,7 +68,7 @@ echo [4/5] Local application files removed.
 echo [5/5] Finishing...
 >>"%LOGFILE%" echo [%date% %time%] Uninstall completed successfully
 
-start "" "https://etech-symantec.github.io/trace/?mode=direct&launcher=v6-uninstalled"
+start "" "https://etech-symantec.github.io/trace/?mode=direct&launcher=v6-uninstalled&_=%%RANDOM%%%%RANDOM%%"
 
 timeout /t 2 /nobreak >nul
 exit /b 0
