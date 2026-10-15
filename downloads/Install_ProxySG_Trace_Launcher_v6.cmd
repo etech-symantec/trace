@@ -1,6 +1,6 @@
 @echo off
 setlocal EnableExtensions DisableDelayedExpansion
-title ProxySG Trace Launcher v6.2 - Install / Repair
+title ProxySG Trace Launcher v6.3 - Install / Repair
 
 set "BASEURL=https://etech-symantec.github.io/trace/downloads"
 set "APPDIR=%LOCALAPPDATA%\Etech\ProxySGTrace"
@@ -9,6 +9,8 @@ set "EDITOR=%APPDIR%\ProxySG_Policy_Trace_Editor.exe"
 set "ZIPTMP=%APPDIR%\ProxySG_Policy_Trace_Editor.zip.download"
 set "ZIPFILE=%APPDIR%\ProxySG_Policy_Trace_Editor.zip"
 set "HASHFILE=%APPDIR%\ProxySG_Policy_Trace_Editor.zip.sha256"
+set "VERSIONFILE=%APPDIR%\version.json"
+set "VERSIONMARKER=%APPDIR%\editor.version"
 set "EXTRACTDIR=%TEMP%\ProxySGTraceEditor_v6_%RANDOM%%RANDOM%"
 set "LOGFILE=%TEMP%\ProxySG_Trace_Launcher_v6_install.log"
 
@@ -74,6 +76,18 @@ echo [2/6] Downloading ZIP SHA-256...
 >> "%LOGFILE%" echo [%date% %time%] Downloading ZIP SHA-256
 curl.exe -fL --retry 2 --connect-timeout 15 "%BASEURL%/ProxySG_Policy_Trace_Editor.zip.sha256" -o "%HASHFILE%"
 if errorlevel 1 goto :hash_download_fail
+
+rem Version metadata is optional for installation, but used by the web version checker.
+set "EDITOR_VERSION="
+curl.exe -fsL --connect-timeout 10 "%BASEURL%/version.json?_=%%RANDOM%%%%RANDOM%%" -o "%VERSIONFILE%" >nul 2>&1
+if exist "%VERSIONFILE%" (
+  for /f "usebackq delims=" %%V in (`powershell.exe -NoProfile -ExecutionPolicy Bypass -Command ^
+    "$raw=Get-Content -Raw -LiteralPath '%VERSIONFILE%' -ErrorAction SilentlyContinue;" ^
+    "$v=''; try{$j=$raw|ConvertFrom-Json; $c=@($j.editorVersion,$j.editor_version,$j.latestEditorVersion,$j.latest_editor_version,$j.latestVersion,$j.latest_version,$j.version,$j.latest,$j.editor.version,$j.release.version); foreach($x in $c){if($x){$s=[string]$x;if($s -match 'v?(\d+(?:\.\d+){1,3})'){$v=$Matches[1];break}}}}catch{};" ^
+    "if(-not $v -and $raw -match '"(?:editorVersion|editor_version|latestEditorVersion|latest_editor_version|latestVersion|latest_version|version|latest)"\s*:\s*"?v?(\d+(?:\.\d+){1,3})'){$v=$Matches[1]}; if($v){Write-Output $v}"`) do (
+    if not defined EDITOR_VERSION set "EDITOR_VERSION=%%V"
+  )
+)
 
 for /f "tokens=1" %%H in (%HASHFILE%) do (
   set "EXPECTED=%%H"
@@ -146,11 +160,23 @@ if errorlevel 1 goto :replace_fail
 
 if exist "%EXTRACTDIR%" rmdir /s /q "%EXTRACTDIR%" >nul 2>&1
 
+if defined EDITOR_VERSION (
+  > "%VERSIONMARKER%" echo %EDITOR_VERSION%
+  >> "%LOGFILE%" echo [%date% %time%] Installed Editor version %EDITOR_VERSION%
+) else (
+  > "%VERSIONMARKER%" echo unknown
+  >> "%LOGFILE%" echo [%date% %time%] Installed Editor version unknown
+)
+
 >> "%LOGFILE%" echo [%date% %time%] Installation completed successfully
 echo [OK] Installation completed successfully.
 
-rem Open callback page so the web UI changes from Install to Run.
-start "" "https://etech-symantec.github.io/trace/?mode=direct&launcher=v6-installed&_=%%RANDOM%%%%RANDOM%%"
+rem Open callback page and tell the browser which Editor version was installed.
+if defined EDITOR_VERSION (
+  start "" "https://etech-symantec.github.io/trace/?mode=direct&launcher=v6-installed&editor_version=%EDITOR_VERSION%&_=%%RANDOM%%%%RANDOM%%"
+) else (
+  start "" "https://etech-symantec.github.io/trace/?mode=direct&launcher=v6-installed&_=%%RANDOM%%%%RANDOM%%"
+)
 
 timeout /t 2 /nobreak >nul
 exit /b 0

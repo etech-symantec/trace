@@ -428,7 +428,7 @@
 <!-- 공통 헤더 + 제목 + 버전 -->
 <script>
   window.pageTitle = "ProxySG Trace 도구";
-  window.pageVersion = "ver.2026.10.15.02";
+  window.pageVersion = "ver.2026.10.15.03";
 </script> 
 <script src="https://etech-symantec.github.io/header.js"></script>
 
@@ -1364,10 +1364,12 @@ document.addEventListener("click", (e) => {
 <script>
 (() => {
   const SLOT_ID='proxysg-launcher-slot';
-  const INSTALL_URL='./downloads/Install_ProxySG_Trace_Launcher_v6.cmd?v=20260930-2';
-  const UNINSTALL_URL='./downloads/Uninstall_ProxySG_Trace_Editor_v6.cmd?v=20260930-1';
+  const INSTALL_URL='./downloads/Install_ProxySG_Trace_Launcher_v6.cmd?v=20261015-3';
+  const UNINSTALL_URL='./downloads/Uninstall_ProxySG_Trace_Editor_v6.cmd?v=20261015-2';
+  const REPO_VERSION_URL='./downloads/version.json';
   const PROTOCOL_URL='proxysg-trace-v6://run';
   const STORAGE_KEY='proxysgTraceLauncherInstalledVersion';
+  const EDITOR_VERSION_KEY='proxysgTraceInstalledEditorVersion';
   const STATE_KEY='proxysgTraceLauncherState';
   const DOWNLOAD_NOTICE_KEY='proxysgTraceV6InstallerDownloaded';
   const VERSION='6';
@@ -1410,7 +1412,18 @@ document.addEventListener("click", (e) => {
       uninstallBadge:'로컬 설치 제거',
       stateInstalled:'설치됨',
       stateNotInstalled:'미설치',
-      statePendingRemove:'삭제 완료 대기 중'
+      statePendingRemove:'삭제 완료 대기 중',
+      versionCheck:'↻ 최신 버전 확인',
+      versionChecking:'버전 확인 중…',
+      versionLatest:'✓ 최신 버전',
+      versionReinstall:'↻ 최신 버전 재설치',
+      versionInstalled:'설치 버전',
+      versionRepo:'Repo 최신 버전',
+      versionOk:'현재 설치된 Editor가 최신 버전입니다.',
+      versionOld:'새 버전이 있습니다. 최신 버전으로 재설치를 권장합니다.',
+      versionUnknownInstalled:'설치된 Editor의 버전 정보가 없습니다. 최신 버전 재설치를 권장합니다.',
+      versionRepoFail:'Repo의 최신 버전 정보를 확인하지 못했습니다.',
+      versionReinstallDownloaded:'⚠ 재설치 파일 다운로드됨 · 1회 실행하세요'
     },
     en:{
       title:'ProxySG Trace Editor',
@@ -1442,7 +1455,18 @@ document.addEventListener("click", (e) => {
       uninstallBadge:'REMOVE LOCAL INSTALL',
       stateInstalled:'Installed',
       stateNotInstalled:'Not installed',
-      statePendingRemove:'Waiting for uninstall to finish'
+      statePendingRemove:'Waiting for uninstall to finish',
+      versionCheck:'↻ Check latest version',
+      versionChecking:'Checking version…',
+      versionLatest:'✓ Up to date',
+      versionReinstall:'↻ Reinstall latest',
+      versionInstalled:'Installed version',
+      versionRepo:'Latest repo version',
+      versionOk:'The installed Editor is up to date.',
+      versionOld:'A newer version is available. Reinstalling the latest version is recommended.',
+      versionUnknownInstalled:'The installed Editor version is unknown. Reinstalling the latest version is recommended.',
+      versionRepoFail:'Could not read the latest version from the repository.',
+      versionReinstallDownloaded:'⚠ Reinstall file downloaded · Run it once'
     }
   };
 
@@ -1470,6 +1494,8 @@ document.addEventListener("click", (e) => {
     const callback=u.searchParams.get('launcher');
     if(callback==='v6-installed'){
       publishState('installed');
+      const editorVersion=normalizeVersion(u.searchParams.get('editor_version')||'');
+      if(editorVersion) localStorage.setItem(EDITOR_VERSION_KEY,editorVersion);
       sessionStorage.removeItem(DOWNLOAD_NOTICE_KEY);
       sessionStorage.removeItem('proxysgTraceV6UninstallDownloaded');
       localStorage.removeItem('proxysgTraceV6UninstallPending');
@@ -1478,6 +1504,8 @@ document.addEventListener("click", (e) => {
       history.replaceState(null,'',u);
     }else if(callback==='v6-uninstalled'){
       publishState('uninstalled');
+      localStorage.removeItem(EDITOR_VERSION_KEY);
+      versionUi={status:'idle',repo:'',installed:'',message:''};
       sessionStorage.removeItem(DOWNLOAD_NOTICE_KEY);
       sessionStorage.removeItem('proxysgTraceV6UninstallDownloaded');
       localStorage.removeItem('proxysgTraceV6UninstallPending');
@@ -1486,6 +1514,55 @@ document.addEventListener("click", (e) => {
       history.replaceState(null,'',u);
     }
   }
+
+  function normalizeVersion(v){
+    const s=String(v||'').trim().replace(/^v/i,'');
+    const m=s.match(/(\d+(?:\.\d+){1,3})/);
+    return m?m[1]:'';
+  }
+
+  function compareVersions(a,b){
+    const aa=normalizeVersion(a).split('.').map(Number);
+    const bb=normalizeVersion(b).split('.').map(Number);
+    const n=Math.max(aa.length,bb.length);
+    for(let i=0;i<n;i++){
+      const av=aa[i]||0,bv=bb[i]||0;
+      if(av>bv) return 1;
+      if(av<bv) return -1;
+    }
+    return 0;
+  }
+
+  function extractRepoVersion(raw){
+    let data=null;
+    try{ data=JSON.parse(raw); }catch(_){ }
+    const candidates=[];
+    if(data && typeof data==='object'){
+      candidates.push(
+        data.editorVersion,data.editor_version,data.latestEditorVersion,data.latest_editor_version,
+        data.latestVersion,data.latest_version,data.version,data.latest,
+        data.editor?.version,data.editor?.latestVersion,data.release?.version
+      );
+    }
+    for(const v of candidates){
+      const n=normalizeVersion(v);
+      if(n) return n;
+    }
+    // Fallback only when known JSON keys were not available.
+    const keyed=String(raw||'').match(/"(?:editorVersion|editor_version|latestEditorVersion|latest_editor_version|latestVersion|latest_version|version|latest)"\s*:\s*"?(v?\d+(?:\.\d+){1,3})/i);
+    return keyed?normalizeVersion(keyed[1]):'';
+  }
+
+  async function fetchRepoVersion(){
+    const r=await fetch(REPO_VERSION_URL+'?_='+Date.now(),{cache:'no-store'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const raw=await r.text();
+    const v=extractRepoVersion(raw);
+    if(!v) throw new Error('Version field not found');
+    return v;
+  }
+
+  let versionUi={status:'idle',repo:'',installed:'',message:''};
 
   function installed(){
     return readState()==='installed';
@@ -1528,6 +1605,19 @@ document.addEventListener("click", (e) => {
       .psgv6-actions .psgv6-btn{margin-top:0}
       .psgv6-uninstall{border:1px solid #ef9aa4;background:#fff1f2;color:#a92332;box-shadow:none}
       .psgv6-uninstall:hover{background:#ffe5e8;border-color:#e56d79;box-shadow:0 5px 12px rgba(180,35,47,.10)}
+      .psgv6-version{border:1px solid #a9bfd8;background:#f7fbff;color:#31506f;box-shadow:none}
+      .psgv6-version:hover{background:#edf6ff;border-color:#7fa7d3;box-shadow:0 5px 12px rgba(47,90,135,.10)}
+      .psgv6-version.latest{border-color:#86d6b7;background:#ecfdf5;color:#087a55}
+      .psgv6-version.reinstall{border-color:#f0b45b;background:#fff5df;color:#a05b00;box-shadow:0 5px 12px rgba(217,119,6,.10)}
+      .psgv6-versionBox{display:none;margin-top:13px;padding:12px 14px;border-radius:12px;border:1px solid #cdd9e7;background:rgba(255,255,255,.75);font-size:11px;line-height:1.55}
+      .psgv6-versionBox.show{display:block}
+      .psgv6-versionBox.ok{border-color:#9ddbc5;background:#f0fdf7;color:#17654d}
+      .psgv6-versionBox.warn{border-color:#efc171;background:#fff8e8;color:#84500b}
+      .psgv6-versionBox.error{border-color:#efb0b7;background:#fff2f3;color:#8f2632}
+      .psgv6-versionGrid{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:5px 9px;align-items:center;margin-bottom:5px}
+      .psgv6-versionLabel{font-size:9px;font-weight:900;letter-spacing:.35px;color:#728397;text-transform:uppercase}
+      .psgv6-versionValue{font-weight:900;color:inherit}
+      .psgv6-versionMsg{font-weight:750}
       .psgv6-removeHelp{display:none;margin-top:16px;border:2px solid #e35d6a;border-radius:16px;background:linear-gradient(135deg,#fff1f2,#fffafa 55%,#ffe8eb);color:#6f1d27;box-shadow:0 12px 28px rgba(190,40,55,.13);overflow:hidden}
       .psgv6-removeHelp.show{display:block;animation:psgv6NoticeIn .22s ease-out}
       .psgv6-removeHelp .psgv6-helpHead{background:linear-gradient(90deg,#ffe3e6,#fff2f3);border-bottom-color:#efadb4}
@@ -1590,10 +1680,12 @@ document.addEventListener("click", (e) => {
 
         <div class="psgv6-actions">
           <button id="psgv6Button" class="psgv6-btn${downloaded?' downloaded':''}">${ok?x.run:(downloaded?x.downloading:x.install)}</button>
+          ${ok?`<button id="psgv6Version" class="psgv6-btn psgv6-version">${x.versionCheck}</button>`:''}
           ${ok?`<button id="psgv6Uninstall" class="psgv6-btn psgv6-uninstall">${uninstallDownloaded?x.uninstallDownloaded:x.uninstall}</button>`:''}
         </div>
 
         <div class="psgv6-note">${ok?x.runNote:x.installNote}</div>
+        ${ok?`<div id="psgv6VersionBox" class="psgv6-versionBox"></div>`:''}
 
         <div id="psgv6Help" class="psgv6-help">
           <div class="psgv6-helpHead">
@@ -1640,6 +1732,80 @@ document.addEventListener("click", (e) => {
 
     if(downloaded) slot.querySelector('#psgv6Help')?.classList.add('show');
     if(uninstallDownloaded) slot.querySelector('#psgv6RemoveHelp')?.classList.add('show');
+
+    const versionBtn=slot.querySelector('#psgv6Version');
+    const versionBox=slot.querySelector('#psgv6VersionBox');
+
+    function showVersionBox(){
+      if(!versionBtn || !versionBox) return;
+      const iv=versionUi.installed||localStorage.getItem(EDITOR_VERSION_KEY)||'';
+      const rv=versionUi.repo||'';
+      versionBox.className='psgv6-versionBox show '+(
+        versionUi.status==='latest'?'ok':
+        (versionUi.status==='outdated'||versionUi.status==='unknown-installed')?'warn':'error'
+      );
+      versionBox.innerHTML=`
+        <div class="psgv6-versionGrid">
+          <span class="psgv6-versionLabel">${x.versionInstalled}</span><span class="psgv6-versionValue">${iv||'-'}</span>
+          <span class="psgv6-versionLabel">${x.versionRepo}</span><span class="psgv6-versionValue">${rv||'-'}</span>
+        </div>
+        <div class="psgv6-versionMsg">${versionUi.message||''}</div>`;
+      versionBtn.classList.remove('latest','reinstall');
+      if(versionUi.status==='latest'){
+        versionBtn.classList.add('latest');
+        versionBtn.textContent=x.versionLatest;
+      }else if(versionUi.status==='outdated'||versionUi.status==='unknown-installed'){
+        versionBtn.classList.add('reinstall');
+        versionBtn.textContent=x.versionReinstall;
+      }else{
+        versionBtn.textContent=x.versionCheck;
+      }
+    }
+
+    if(versionUi.status!=='idle') showVersionBox();
+
+    if(versionBtn){
+      versionBtn.onclick=async()=>{
+        if(versionUi.status==='outdated'||versionUi.status==='unknown-installed'){
+          downloadInstaller();
+          sessionStorage.setItem(DOWNLOAD_NOTICE_KEY,'1');
+          versionBtn.textContent=x.versionReinstallDownloaded;
+          versionBtn.classList.add('reinstall');
+          const h=slot.querySelector('#psgv6Help');
+          h?.classList.add('show');
+          h?.scrollIntoView({behavior:'smooth',block:'nearest'});
+          return;
+        }
+
+        versionBtn.disabled=true;
+        versionBtn.textContent=x.versionChecking;
+        try{
+          const repo=await fetchRepoVersion();
+          const inst=normalizeVersion(localStorage.getItem(EDITOR_VERSION_KEY)||'');
+          versionUi.repo=repo;
+          versionUi.installed=inst;
+
+          if(!inst){
+            versionUi.status='unknown-installed';
+            versionUi.message=x.versionUnknownInstalled;
+          }else if(compareVersions(inst,repo)>=0){
+            versionUi.status='latest';
+            versionUi.message=x.versionOk;
+          }else{
+            versionUi.status='outdated';
+            versionUi.message=x.versionOld;
+          }
+        }catch(err){
+          versionUi.status='error';
+          versionUi.repo='';
+          versionUi.installed=normalizeVersion(localStorage.getItem(EDITOR_VERSION_KEY)||'');
+          versionUi.message=x.versionRepoFail;
+        }finally{
+          versionBtn.disabled=false;
+          showVersionBox();
+        }
+      };
+    }
 
     const uninstallBtn=slot.querySelector('#psgv6Uninstall');
     if(uninstallBtn){
