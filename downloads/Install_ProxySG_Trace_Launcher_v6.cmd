@@ -1,20 +1,21 @@
 @echo off
 setlocal EnableExtensions DisableDelayedExpansion
-title ProxySG Trace Launcher v6.3 - Install / Repair
+title ProxySG Trace Launcher v6.4 - Install / Repair
 
 set "BASEURL=https://etech-symantec.github.io/trace/downloads"
 set "APPDIR=%LOCALAPPDATA%\Etech\ProxySGTrace"
 set "LAUNCHER=%APPDIR%\ProxySG_Trace_Launcher_v6.cmd"
 set "EDITOR=%APPDIR%\ProxySG_Policy_Trace_Editor.exe"
+set "EDITORNEW=%APPDIR%\ProxySG_Policy_Trace_Editor.exe.new"
 set "ZIPTMP=%APPDIR%\ProxySG_Policy_Trace_Editor.zip.download"
 set "ZIPFILE=%APPDIR%\ProxySG_Policy_Trace_Editor.zip"
 set "HASHFILE=%APPDIR%\ProxySG_Policy_Trace_Editor.zip.sha256"
 set "VERSIONFILE=%APPDIR%\version.json"
 set "VERSIONMARKER=%APPDIR%\editor.version"
-set "EXTRACTDIR=%TEMP%\ProxySGTraceEditor_v6_%RANDOM%%RANDOM%"
+set "EXTRACTDIR=%TEMP%\ProxySGTraceEditor_v64_%RANDOM%%RANDOM%"
 set "LOGFILE=%TEMP%\ProxySG_Trace_Launcher_v6_install.log"
 
-> "%LOGFILE%" echo [%date% %time%] Install started
+> "%LOGFILE%" echo [%date% %time%] Install v6.4 started
 
 where curl.exe >nul 2>&1
 if errorlevel 1 goto :no_curl
@@ -40,9 +41,9 @@ rem ------------------------------------------------------------
 if not exist "%LAUNCHER%" goto :fail
 
 rem ------------------------------------------------------------
-rem Register v6 protocol.
+rem Register v6 URL protocol for current user.
 rem ------------------------------------------------------------
-set "REGFILE=%TEMP%\proxysg_trace_v6_%RANDOM%.reg"
+set "REGFILE=%TEMP%\proxysg_trace_v64_%RANDOM%.reg"
 set "COMSPEC_ESC=%ComSpec:\=\\%"
 set "LAUNCHER_ESC=%LAUNCHER:\=\\%"
 
@@ -67,34 +68,40 @@ set "RC=%ERRORLEVEL%"
 del /q "%REGFILE%" >nul 2>&1
 if not "%RC%"=="0" goto :fail
 
-echo [1/6] Downloading Editor ZIP...
->> "%LOGFILE%" echo [%date% %time%] Downloading Editor ZIP
-curl.exe -fL --retry 2 --connect-timeout 15 "%BASEURL%/ProxySG_Policy_Trace_Editor.zip" -o "%ZIPTMP%"
+echo [1/7] Downloading Editor ZIP...
+>>"%LOGFILE%" echo [%date% %time%] Downloading Editor ZIP
+curl.exe -fsSL --retry 2 --connect-timeout 15 "%BASEURL%/ProxySG_Policy_Trace_Editor.zip" -o "%ZIPTMP%"
 if errorlevel 1 goto :download_fail
 
-echo [2/6] Downloading ZIP SHA-256...
->> "%LOGFILE%" echo [%date% %time%] Downloading ZIP SHA-256
-curl.exe -fL --retry 2 --connect-timeout 15 "%BASEURL%/ProxySG_Policy_Trace_Editor.zip.sha256" -o "%HASHFILE%"
+echo [2/7] Downloading ZIP SHA-256...
+>>"%LOGFILE%" echo [%date% %time%] Downloading ZIP SHA-256
+curl.exe -fsSL --retry 2 --connect-timeout 15 "%BASEURL%/ProxySG_Policy_Trace_Editor.zip.sha256" -o "%HASHFILE%"
 if errorlevel 1 goto :hash_download_fail
 
-rem Version metadata is optional for installation, but used by the web version checker.
+echo [3/7] Reading Editor version...
+>>"%LOGFILE%" echo [%date% %time%] Reading version.json
 set "EDITOR_VERSION="
-curl.exe -fsL --connect-timeout 10 "%BASEURL%/version.json?_=%%RANDOM%%%%RANDOM%%" -o "%VERSIONFILE%" >nul 2>&1
-if exist "%VERSIONFILE%" (
-  for /f "usebackq delims=" %%V in (`powershell.exe -NoProfile -ExecutionPolicy Bypass -Command ^
-    "$raw=Get-Content -Raw -LiteralPath '%VERSIONFILE%' -ErrorAction SilentlyContinue;" ^
-    "$v=''; try{$j=$raw|ConvertFrom-Json; $c=@($j.editorVersion,$j.editor_version,$j.latestEditorVersion,$j.latest_editor_version,$j.latestVersion,$j.latest_version,$j.version,$j.latest,$j.editor.version,$j.release.version); foreach($x in $c){if($x){$s=[string]$x;if($s -match 'v?(\d+(?:\.\d+){1,3})'){$v=$Matches[1];break}}}}catch{};" ^
-    "if(-not $v -and $raw -match '"(?:editorVersion|editor_version|latestEditorVersion|latest_editor_version|latestVersion|latest_version|version|latest)"\s*:\s*"?v?(\d+(?:\.\d+){1,3})'){$v=$Matches[1]}; if($v){Write-Output $v}"`) do (
-    if not defined EDITOR_VERSION set "EDITOR_VERSION=%%V"
-  )
-)
+if exist "%VERSIONMARKER%" del /q "%VERSIONMARKER%" >nul 2>&1
+if exist "%VERSIONFILE%" del /q "%VERSIONFILE%" >nul 2>&1
 
-for /f "tokens=1" %%H in (%HASHFILE%) do (
-  set "EXPECTED=%%H"
-  goto :have_expected
-)
+curl.exe -fsSL --connect-timeout 10 "%BASEURL%/version.json?_=%RANDOM%%RANDOM%" -o "%VERSIONFILE%" >nul 2>&1
+if not exist "%VERSIONFILE%" goto :version_metadata_done
 
-:have_expected
+rem IMPORTANT:
+rem Run PowerShell as a standalone command. Do not embed it in FOR /F or a
+rem parenthesized CMD block. That avoids "was unexpected at this time" errors.
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='SilentlyContinue';$j=Get-Content -Raw -LiteralPath '%VERSIONFILE%'|ConvertFrom-Json;$v=@($j.editorVersion,$j.editor_version,$j.latestEditorVersion,$j.latest_editor_version,$j.latestVersion,$j.latest_version,$j.version,$j.latest,$j.editor.version,$j.release.version)|Where-Object {$_}|Select-Object -First 1;if($v){$s=([string]$v)-replace '^v','';[IO.File]::WriteAllText('%VERSIONMARKER%',$s)}" >nul 2>&1
+
+if not exist "%VERSIONMARKER%" goto :version_metadata_done
+set /p EDITOR_VERSION=<"%VERSIONMARKER%"
+
+:version_metadata_done
+if defined EDITOR_VERSION >>"%LOGFILE%" echo [%date% %time%] Repo Editor version %EDITOR_VERSION%
+if not defined EDITOR_VERSION >>"%LOGFILE%" echo [%date% %time%] Repo Editor version unavailable
+
+echo [4/7] Verifying SHA-256...
+set "EXPECTED="
+for /f "usebackq tokens=1" %%H in ("%HASHFILE%") do set "EXPECTED=%%H"
 if not defined EXPECTED goto :hash_invalid
 
 set "ACTUAL="
@@ -102,143 +109,152 @@ for /f "tokens=* delims= " %%H in ('certutil -hashfile "%ZIPTMP%" SHA256 ^| find
 if not defined ACTUAL goto :hash_calc_fail
 
 if /I not "%EXPECTED%"=="%ACTUAL%" goto :hash_mismatch
+>>"%LOGFILE%" echo [%date% %time%] ZIP SHA-256 verified
 
-echo [3/6] SHA-256 verified.
->> "%LOGFILE%" echo [%date% %time%] ZIP SHA-256 verified
 move /y "%ZIPTMP%" "%ZIPFILE%" >nul
 if errorlevel 1 goto :fail_cleanup
 
-echo [4/6] Extracting Editor ZIP...
->> "%LOGFILE%" echo [%date% %time%] Extracting Editor ZIP
+echo [5/7] Extracting Editor ZIP...
+>>"%LOGFILE%" echo [%date% %time%] Extracting Editor ZIP
 if exist "%EXTRACTDIR%" rmdir /s /q "%EXTRACTDIR%" >nul 2>&1
 mkdir "%EXTRACTDIR%" >nul 2>&1
 if errorlevel 1 goto :fail_cleanup
 
 tar.exe -xf "%ZIPFILE%" -C "%EXTRACTDIR%"
-if errorlevel 1 goto :fail_cleanup
+if errorlevel 1 goto :extract_fail
 
 set "FOUND_EDITOR="
-for /r "%EXTRACTDIR%" %%F in (ProxySG_Policy_Trace_Editor*.exe) do (
-  if not defined FOUND_EDITOR set "FOUND_EDITOR=%%F"
-)
+for /r "%EXTRACTDIR%" %%F in (ProxySG_Policy_Trace_Editor*.exe) do if not defined FOUND_EDITOR set "FOUND_EDITOR=%%F"
 if not defined FOUND_EDITOR goto :editor_not_found
 
-echo [5/6] Closing running Editor if needed...
->> "%LOGFILE%" echo [%date% %time%] Closing running Editor before update
+rem If version.json did not provide a version, derive it from a versioned EXE filename.
+if defined EDITOR_VERSION goto :editor_version_ready
+for %%A in ("%FOUND_EDITOR%") do set "EDITOR_FILE=%%~nA"
+set "FALLBACK_VERSION=%EDITOR_FILE:ProxySG_Policy_Trace_Editor_v=%"
+if /I not "%FALLBACK_VERSION%"=="%EDITOR_FILE%" set "EDITOR_VERSION=%FALLBACK_VERSION%"
 
-rem Stop only ProxySG Policy Trace Editor processes.
-powershell.exe -NoProfile -ExecutionPolicy Bypass -Command ^
-  "$target=[IO.Path]::GetFullPath($env:LOCALAPPDATA+'\Etech\ProxySGTrace\ProxySG_Policy_Trace_Editor.exe');" ^
-  "Get-Process -ErrorAction SilentlyContinue | Where-Object { try { ($_.ProcessName -like 'ProxySG_Policy_Trace_Editor*') -or ($_.Path -and [IO.Path]::GetFullPath($_.Path) -eq $target) } catch { $false } } | Stop-Process -Force -ErrorAction SilentlyContinue" >nul 2>&1
+:editor_version_ready
+if defined EDITOR_VERSION >>"%LOGFILE%" echo [%date% %time%] Installing Editor version %EDITOR_VERSION%
 
-rem Wait briefly for Windows to release the executable file handle.
-for /L %%N in (1,1,10) do (
-  if not exist "%EDITOR%" goto :editor_unlocked
-  2>nul (>>"%EDITOR%" echo.) && (
-    rem Remove the test byte immediately by restoring from a temporary copy is undesirable.
-    rem We only reach this branch if append succeeded; use copy stage directly after short delay.
-    goto :editor_unlocked
-  )
-  ping 127.0.0.1 -n 2 >nul
-)
+echo [6/7] Closing running Editor if needed...
+>>"%LOGFILE%" echo [%date% %time%] Closing running Editor
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$target=[IO.Path]::GetFullPath($env:LOCALAPPDATA+'\Etech\ProxySGTrace\ProxySG_Policy_Trace_Editor.exe');Get-Process -ErrorAction SilentlyContinue|Where-Object{try{($_.ProcessName -like 'ProxySG_Policy_Trace_Editor*') -or ($_.Path -and [IO.Path]::GetFullPath($_.Path) -eq $target)}catch{$false}}|Stop-Process -Force -ErrorAction SilentlyContinue" >nul 2>&1
+timeout /t 1 /nobreak >nul
 
-:editor_unlocked
-echo [6/6] Installing Editor...
->> "%LOGFILE%" echo [%date% %time%] Installing Editor
+echo [7/7] Installing Editor...
+>>"%LOGFILE%" echo [%date% %time%] Installing Editor
 
-rem Copy to a temporary file first, then atomically replace the target.
-copy /y "%FOUND_EDITOR%" "%APPDIR%\ProxySG_Policy_Trace_Editor.exe.new" >nul
+if exist "%EDITORNEW%" del /f /q "%EDITORNEW%" >nul 2>&1
+copy /y "%FOUND_EDITOR%" "%EDITORNEW%" >nul
 if errorlevel 1 goto :copy_stage_fail
 
-rem Ensure old target is removed after process termination.
-if exist "%EDITOR%" (
-  del /f /q "%EDITOR%" >nul 2>&1
-)
+set "RETRY=0"
 
-move /y "%APPDIR%\ProxySG_Policy_Trace_Editor.exe.new" "%EDITOR%" >nul 2>&1
-if errorlevel 1 goto :replace_fail
+:replace_retry
+set /a RETRY+=1 >nul
+if exist "%EDITOR%" del /f /q "%EDITOR%" >nul 2>&1
+if exist "%EDITOR%" goto :replace_wait
 
+move /y "%EDITORNEW%" "%EDITOR%" >nul 2>&1
+if not errorlevel 1 goto :install_complete
+
+:replace_wait
+if %RETRY% GEQ 10 goto :replace_fail
+timeout /t 1 /nobreak >nul
+goto :replace_retry
+
+:install_complete
 if exist "%EXTRACTDIR%" rmdir /s /q "%EXTRACTDIR%" >nul 2>&1
 
-if defined EDITOR_VERSION (
-  > "%VERSIONMARKER%" echo %EDITOR_VERSION%
-  >> "%LOGFILE%" echo [%date% %time%] Installed Editor version %EDITOR_VERSION%
-) else (
-  > "%VERSIONMARKER%" echo unknown
-  >> "%LOGFILE%" echo [%date% %time%] Installed Editor version unknown
-)
+if defined EDITOR_VERSION goto :write_known_version
+> "%VERSIONMARKER%" echo unknown
+>>"%LOGFILE%" echo [%date% %time%] Installed Editor version unknown
+goto :version_written
 
->> "%LOGFILE%" echo [%date% %time%] Installation completed successfully
+:write_known_version
+> "%VERSIONMARKER%" echo %EDITOR_VERSION%
+>>"%LOGFILE%" echo [%date% %time%] Installed Editor version %EDITOR_VERSION%
+
+:version_written
+>>"%LOGFILE%" echo [%date% %time%] Installation completed successfully
 echo [OK] Installation completed successfully.
 
-rem Open callback page and tell the browser which Editor version was installed.
-if defined EDITOR_VERSION (
-  start "" "https://etech-symantec.github.io/trace/?mode=direct&launcher=v6-installed&editor_version=%EDITOR_VERSION%&_=%%RANDOM%%%%RANDOM%%"
-) else (
-  start "" "https://etech-symantec.github.io/trace/?mode=direct&launcher=v6-installed&_=%%RANDOM%%%%RANDOM%%"
-)
+if defined EDITOR_VERSION goto :callback_known
+start "" "https://etech-symantec.github.io/trace/?mode=direct&launcher=v6-installed&_=%RANDOM%%RANDOM%"
+goto :done
 
+:callback_known
+start "" "https://etech-symantec.github.io/trace/?mode=direct&launcher=v6-installed&editor_version=%EDITOR_VERSION%&_=%RANDOM%%RANDOM%"
+
+:done
 timeout /t 2 /nobreak >nul
 exit /b 0
 
 :no_curl
->> "%LOGFILE%" echo [%date% %time%] ERROR curl.exe not found
+>>"%LOGFILE%" echo [%date% %time%] ERROR curl.exe not found
 echo [ERROR] curl.exe not found.
 exit /b 10
 
 :no_tar
->> "%LOGFILE%" echo [%date% %time%] ERROR tar.exe not found
+>>"%LOGFILE%" echo [%date% %time%] ERROR tar.exe not found
 echo [ERROR] tar.exe not found.
 exit /b 11
 
 :download_fail
->> "%LOGFILE%" echo [%date% %time%] ERROR Editor ZIP download failed
+>>"%LOGFILE%" echo [%date% %time%] ERROR Editor ZIP download failed
 echo [ERROR] Editor ZIP download failed.
 goto :fail_cleanup
 
 :hash_download_fail
->> "%LOGFILE%" echo [%date% %time%] ERROR SHA-256 download failed
+>>"%LOGFILE%" echo [%date% %time%] ERROR ZIP SHA-256 download failed
 echo [ERROR] ZIP SHA-256 download failed.
 goto :fail_cleanup
 
 :hash_invalid
->> "%LOGFILE%" echo [%date% %time%] ERROR SHA-256 file invalid
+>>"%LOGFILE%" echo [%date% %time%] ERROR ZIP SHA-256 file invalid
 echo [ERROR] ZIP SHA-256 file is invalid.
 goto :fail_cleanup
 
 :hash_calc_fail
->> "%LOGFILE%" echo [%date% %time%] ERROR SHA-256 calculation failed
+>>"%LOGFILE%" echo [%date% %time%] ERROR SHA-256 calculation failed
 echo [ERROR] ZIP SHA-256 calculation failed.
 goto :fail_cleanup
 
 :hash_mismatch
->> "%LOGFILE%" echo [%date% %time%] ERROR SHA-256 mismatch
+>>"%LOGFILE%" echo [%date% %time%] ERROR SHA-256 mismatch
 echo [ERROR] ZIP SHA-256 mismatch.
 goto :fail_cleanup
 
+:extract_fail
+>>"%LOGFILE%" echo [%date% %time%] ERROR ZIP extraction failed
+echo [ERROR] Editor ZIP extraction failed.
+goto :fail_cleanup
+
 :editor_not_found
->> "%LOGFILE%" echo [%date% %time%] ERROR Editor EXE not found in ZIP
+>>"%LOGFILE%" echo [%date% %time%] ERROR Editor EXE not found in ZIP
 echo [ERROR] Editor EXE was not found inside the ZIP.
 goto :fail_cleanup
 
 :copy_stage_fail
->> "%LOGFILE%" echo [%date% %time%] ERROR staging copy failed
+>>"%LOGFILE%" echo [%date% %time%] ERROR staging copy failed
 echo [ERROR] Could not stage the new Editor file.
 goto :fail_cleanup
 
 :replace_fail
->> "%LOGFILE%" echo [%date% %time%] ERROR target replace failed; file may still be locked
+>>"%LOGFILE%" echo [%date% %time%] ERROR installed Editor is still locked
 echo [ERROR] Could not replace the installed Editor.
-echo [ERROR] The old Editor may still be running or locked by another process.
+echo [ERROR] The Editor file is still locked by another process.
 goto :fail_cleanup
 
 :fail_cleanup
 if exist "%ZIPTMP%" del /q "%ZIPTMP%" >nul 2>&1
-if exist "%APPDIR%\ProxySG_Policy_Trace_Editor.exe.new" del /q "%APPDIR%\ProxySG_Policy_Trace_Editor.exe.new" >nul 2>&1
+if exist "%EDITORNEW%" del /q "%EDITORNEW%" >nul 2>&1
 if exist "%EXTRACTDIR%" rmdir /s /q "%EXTRACTDIR%" >nul 2>&1
+echo [INFO] Log: %LOGFILE%
 exit /b 1
 
 :fail
->> "%LOGFILE%" echo [%date% %time%] ERROR launcher installation failed
+>>"%LOGFILE%" echo [%date% %time%] ERROR launcher installation failed
 echo [ERROR] Launcher installation failed.
+echo [INFO] Log: %LOGFILE%
 exit /b 1

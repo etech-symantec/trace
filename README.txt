@@ -1,45 +1,22 @@
-ProxySG Trace v16 - Editor Version Check
+ProxySG Trace v16.1 - Installer Parser Fix
 
-UI:
-- When the Editor is installed, a new '최신 버전 확인 / Check latest version' button appears.
-- It fetches downloads/version.json with cache disabled.
-- It compares the version recorded at install time with the repo's current version.
-- Up to date:
-    button -> '최신 버전'
-- Older or installed version unknown:
-    button -> '최신 버전 재설치'
-    clicking it downloads the normal installer again.
+Cause of the error:
+- v6.3 embedded a complex PowerShell expression inside CMD FOR /F and parentheses.
+- cmd.exe parsed part of that expression itself and stopped with:
+  "... was unexpected at this time."
 
-Installer:
-- Downloads downloads/version.json during installation.
-- Records the repo Editor version in %LOCALAPPDATA%\Etech\ProxySGTrace\editor.version
-- Sends editor_version back in the installation callback.
-- Browser stores the installed Editor version for future comparison.
+Fix:
+- Version parsing is now a standalone PowerShell command.
+- No PowerShell expression is embedded inside FOR /F.
+- Installation still continues even if version.json cannot be read.
+- If version.json is unavailable, the installer tries to derive the version from:
+  ProxySG_Policy_Trace_Editor_vX.Y.exe
+- curl progress output is hidden; only actual errors are shown.
+- Installer remains ASCII/no-BOM.
 
-Supported version.json keys:
-  editorVersion
-  editor_version
-  latestEditorVersion
-  latest_editor_version
-  latestVersion
-  latest_version
-  version
-  latest
-  editor.version
-  release.version
-
-Recommended version.json:
-{
-  "editorVersion": "1.29"
-}
-
-Important:
-- Existing installations made before this version do not have a recorded Editor version.
-  Their first version check will show 'installed version unknown' and recommend reinstalling once.
-- After that reinstall, future comparisons work normally.
-
-GitHub deploy:
+GitHub:
 1. Replace index.html
 2. Replace downloads/Install_ProxySG_Trace_Launcher_v6.cmd
-3. Keep downloads/version.json updated whenever you publish a new Editor ZIP.
-4. Uninstaller can remain unchanged.
+3. Keep ProxySG_Policy_Trace_Editor.zip and its .sha256 unchanged.
+4. Recommended downloads/version.json:
+   { "editorVersion": "1.29" }
