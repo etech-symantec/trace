@@ -428,7 +428,7 @@
 <!-- 공통 헤더 + 제목 + 버전 -->
 <script>
   window.pageTitle = "ProxySG Trace 도구";
-  window.pageVersion = "ver.2026.09.30.03";
+  window.pageVersion = "ver.2026.10.15.01";
 </script> 
 <script src="https://etech-symantec.github.io/header.js"></script>
 
@@ -1368,8 +1368,10 @@ document.addEventListener("click", (e) => {
   const UNINSTALL_URL='./downloads/Uninstall_ProxySG_Trace_Editor_v6.cmd?v=20260930-1';
   const PROTOCOL_URL='proxysg-trace-v6://run';
   const STORAGE_KEY='proxysgTraceLauncherInstalledVersion';
+  const STATE_KEY='proxysgTraceLauncherState';
   const DOWNLOAD_NOTICE_KEY='proxysgTraceV6InstallerDownloaded';
   const VERSION='6';
+  let stateChannel=null;
 
   function isEn(){
     return document.documentElement.lang==='en' ||
@@ -1405,7 +1407,10 @@ document.addEventListener("click", (e) => {
       uninstallStep2:'Uninstall_ProxySG_Trace_Editor_v6.cmd를 한 번 실행합니다.',
       uninstallStep3:'삭제가 끝나면 이 페이지가 자동으로 다시 열리고 “Trace Editor 설치” 버튼으로 돌아갑니다.',
       uninstallTip:'브라우저에 저장된 장비/정책 프로필은 삭제하지 않습니다.',
-      uninstallBadge:'로컬 설치 제거'
+      uninstallBadge:'로컬 설치 제거',
+      stateInstalled:'설치됨',
+      stateNotInstalled:'미설치',
+      statePendingRemove:'삭제 완료 대기 중'
     },
     en:{
       title:'ProxySG Trace Editor',
@@ -1434,32 +1439,56 @@ document.addEventListener("click", (e) => {
       uninstallStep2:'Run Uninstall_ProxySG_Trace_Editor_v6.cmd once.',
       uninstallStep3:'When removal finishes, this page reopens automatically and returns to “Install Trace Editor”.',
       uninstallTip:'Device and policy profiles stored in the browser are not deleted.',
-      uninstallBadge:'REMOVE LOCAL INSTALL'
+      uninstallBadge:'REMOVE LOCAL INSTALL',
+      stateInstalled:'Installed',
+      stateNotInstalled:'Not installed',
+      statePendingRemove:'Waiting for uninstall to finish'
     }
   };
 
   function t(){ return L[isEn()?'en':'ko']; }
 
+  function publishState(state){
+    const payload={state,version:VERSION,ts:Date.now()};
+    localStorage.setItem(STATE_KEY,JSON.stringify(payload));
+    // Keep legacy marker for compatibility with already-open pages.
+    if(state==='installed') localStorage.setItem(STORAGE_KEY,VERSION);
+    else localStorage.setItem(STORAGE_KEY,'0');
+    try{ stateChannel?.postMessage(payload); }catch(_){ }
+  }
+
+  function readState(){
+    try{
+      const p=JSON.parse(localStorage.getItem(STATE_KEY)||'null');
+      if(p && p.version===VERSION && (p.state==='installed'||p.state==='uninstalled')) return p.state;
+    }catch(_){ }
+    return localStorage.getItem(STORAGE_KEY)===VERSION?'installed':'uninstalled';
+  }
+
   function consumeLauncherCallback(){
     const u=new URL(location.href);
     const callback=u.searchParams.get('launcher');
     if(callback==='v6-installed'){
-      localStorage.setItem(STORAGE_KEY,VERSION);
+      publishState('installed');
       sessionStorage.removeItem(DOWNLOAD_NOTICE_KEY);
       sessionStorage.removeItem('proxysgTraceV6UninstallDownloaded');
+      localStorage.removeItem('proxysgTraceV6UninstallPending');
       u.searchParams.delete('launcher');
+      u.searchParams.delete('_');
       history.replaceState(null,'',u);
     }else if(callback==='v6-uninstalled'){
-      localStorage.removeItem(STORAGE_KEY);
+      publishState('uninstalled');
       sessionStorage.removeItem(DOWNLOAD_NOTICE_KEY);
       sessionStorage.removeItem('proxysgTraceV6UninstallDownloaded');
+      localStorage.removeItem('proxysgTraceV6UninstallPending');
       u.searchParams.delete('launcher');
+      u.searchParams.delete('_');
       history.replaceState(null,'',u);
     }
   }
 
   function installed(){
-    return localStorage.getItem(STORAGE_KEY)===VERSION;
+    return readState()==='installed';
   }
 
   function installerDownloaded(){
@@ -1476,6 +1505,7 @@ document.addEventListener("click", (e) => {
       .psgv6-title{font-size:18px;font-weight:850;color:#173b70}
       .psgv6-sub{font-size:12px;color:#566b84;margin-top:4px}
       .psgv6-badge{white-space:nowrap;border:1px solid #8fd7bd;background:#ecfdf5;color:#087a55;border-radius:999px;padding:6px 9px;font-size:10px;font-weight:800}
+      .psgv6-state{display:inline-flex;align-items:center;gap:6px;margin-left:auto;margin-right:8px;border-radius:999px;padding:6px 9px;font-size:10px;font-weight:900;border:1px solid #b9c9da;background:#f8fafc;color:#51657a}.psgv6-state.on{border-color:#8fd7bd;background:#ecfdf5;color:#087a55}.psgv6-state.off{border-color:#cbd5e1;background:#f8fafc;color:#64748b}.psgv6-state.pending{border-color:#f1b865;background:#fff7e6;color:#9a5a00}
       .psgv6-btn{margin-top:16px;border:0;border-radius:10px;padding:11px 16px;font-size:12px;font-weight:850;cursor:pointer;background:linear-gradient(135deg,#2563eb,#4f46e5);color:#fff;box-shadow:0 6px 14px rgba(37,99,235,.24);transition:.13s ease}
       .psgv6-btn:hover{transform:translateY(-1px);box-shadow:0 9px 18px rgba(37,99,235,.28)}
       .psgv6-btn:active{transform:translateY(1px) scale(.975);box-shadow:inset 0 2px 5px rgba(15,23,42,.2)}
@@ -1546,13 +1576,16 @@ document.addEventListener("click", (e) => {
     if(!slot) return;
     style();
     const x=t(), ok=installed(), downloaded=installerDownloaded();
-    const uninstallDownloaded=sessionStorage.getItem('proxysgTraceV6UninstallDownloaded')==='1' && ok;
+    const uninstallDownloaded=(sessionStorage.getItem('proxysgTraceV6UninstallDownloaded')==='1' || !!localStorage.getItem('proxysgTraceV6UninstallPending')) && ok;
 
     slot.innerHTML=`
       <div class="psgv6">
         <div class="psgv6-head">
           <div><div class="psgv6-title">${x.title}</div><div class="psgv6-sub">${x.sub}</div></div>
-          <div class="psgv6-badge">● ${x.badge}</div>
+          <div style="display:flex;align-items:center;margin-left:auto">
+            <div class="psgv6-state ${uninstallDownloaded?'pending':(ok?'on':'off')}">● ${uninstallDownloaded?x.statePendingRemove:(ok?x.stateInstalled:x.stateNotInstalled)}</div>
+            <div class="psgv6-badge">● ${x.badge}</div>
+          </div>
         </div>
 
         <div class="psgv6-actions">
@@ -1614,6 +1647,7 @@ document.addEventListener("click", (e) => {
         if(!window.confirm(x.uninstallConfirm)) return;
         downloadUninstaller();
         sessionStorage.setItem('proxysgTraceV6UninstallDownloaded','1');
+        localStorage.setItem('proxysgTraceV6UninstallPending',String(Date.now()));
         uninstallBtn.textContent=x.uninstallDownloaded;
         const removeHelp=slot.querySelector('#psgv6RemoveHelp');
         removeHelp?.classList.add('show');
@@ -1641,17 +1675,41 @@ document.addEventListener("click", (e) => {
       }
     };
   }
+  function syncAndRender(){
+    consumeLauncherCallback();
+    // If another tab completed uninstall, stale per-tab red notice must disappear immediately.
+    if(!installed()) sessionStorage.removeItem('proxysgTraceV6UninstallDownloaded');
+    render();
+  }
+
   function init(){
     consumeLauncherCallback();
+    try{
+      stateChannel=new BroadcastChannel('proxysg-trace-launcher-state-v6');
+      stateChannel.onmessage=()=>syncAndRender();
+    }catch(_){ }
+
+    window.addEventListener('storage',e=>{
+      if([STATE_KEY,STORAGE_KEY,'proxysgTraceV6UninstallPending'].includes(e.key)) syncAndRender();
+    });
+    window.addEventListener('pageshow',syncAndRender);
+    window.addEventListener('focus',syncAndRender);
+    document.addEventListener('visibilitychange',()=>{ if(!document.hidden) syncAndRender(); });
+
+    // Short polling window is intentional: install/uninstall opens the callback in another tab.
+    // This makes the original tab update even if a storage event is suppressed by browser policy.
+    let polls=0;
+    const timer=setInterval(()=>{
+      syncAndRender();
+      if(++polls>=30) clearInterval(timer);
+    },1000);
+
     render();
-    new MutationObserver(render).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});
-    window.addEventListener('pageshow',render);
-    window.addEventListener('storage',render);
+    window.addEventListener('proxysg-language-change',render);
     document.addEventListener('click',e=>{
       if(e.target?.matches?.('.trace-lang-btn,.langBtn,[data-lang]')) setTimeout(render,0);
     });
   }
-
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init,{once:true});
   else init();
 })();
